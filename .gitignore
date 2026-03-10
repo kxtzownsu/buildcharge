@@ -1,0 +1,5 @@
+out/
+build/
+.config*
+
+scripts/lib/generated/

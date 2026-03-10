@@ -1,0 +1,197 @@
+[
+  {
+    "name": "zlib",
+    "package_name": "ZLIB",
+    "author": "zlib",
+    "description": "A massively spiffy yet delicately unobtrusive compression library.",
+    "dependencies": [],
+    "repo_url": "https://github.com/madler/zlib.git",
+    "repo_branch": "v1.3.1",
+    "directory": "zlib",
+    "patch_directory": "",
+    "build_cmd": [
+      "cmake -B build -S . \\",
+      "  -DBUILD_SHARED_LIBS=off \\",
+      "  -DCMAKE_C_COMPILER=MANIFEST_VAR_CROSS_COMPILATION_ABS_CC \\",
+      "  -DCMAKE_AR=MANIFEST_VAR_CROSS_COMPILATION_ABS_AR \\",
+      "  -DCMAKE_RANLIB=MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB \\",
+      "  -DCMAKE_INSTALL_PREFIX=MANIFEST_VAR_INSTALL_PREFIX",
+      "cmake --build build",
+      "cmake --install build"
+    ]
+  },
+  {
+    "name": "libpng",
+    "package_name": "LIBPNG",
+    "author": "pnggroup",
+    "description": "LIBPNG: Portable Network Graphics support, official libpng repository",
+    "dependencies": ["zlib"],
+    "repo_url": "https://github.com/glennrp/libpng.git",
+    "repo_branch": "v1.5.15",
+    "directory": "libpng",
+    "patch_directory": "",
+    "build_cmd": [
+      "CC=MANIFEST_VAR_CROSS_COMPILATION_ABS_CC \\",
+      "AR=MANIFEST_VAR_CROSS_COMPILATION_ABS_AR \\",
+      "RANLIB=MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB \\",
+      "CPPFLAGS='-IMANIFEST_VAR_INSTALL_PREFIX/include' \\",
+      "LDFLAGS='-LMANIFEST_VAR_INSTALL_PREFIX/lib' \\",
+      "./configure \\",
+      "  --host=MANIFEST_VAR_TARGET_ARCHITECTURE-linux-musl \\",
+      "  --prefix=MANIFEST_VAR_INSTALL_PREFIX \\",
+      "  --enable-static --disable-shared --enable-arm-neon=off",
+      "make -j$(nproc)",
+      "make install"
+    ]
+  },
+  {
+    "name": "libpciaccess",
+    "package_name": "LIBPCIACCESS",
+    "author": "xorg",
+    "description": "Generic PCI access library",
+    "dependencies": [],
+    "repo_url": "https://gitlab.freedesktop.org/xorg/lib/libpciaccess.git",
+    "repo_branch": "libpciaccess-0.18.1",
+    "directory": "libpciaccess",
+    "patch_directory": "",
+    "build_cmd": [
+      "apk add --no-cache meson ninja",
+      "meson setup build \\",
+      "  --default-library=static \\",
+      "  --cross-file=MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE \\",
+      "  --prefix=MANIFEST_VAR_INSTALL_PREFIX",
+      "meson compile -C build",
+      "meson install -C build"
+    ]
+  },
+  {
+    "name": "libxml2",
+    "package_name": "LIBXML2",
+    "author": "gnome",
+    "description": "XML parser and toolkit",
+    "dependencies": [],
+    "repo_url": "https://gitlab.gnome.org/GNOME/libxml2.git",
+    "repo_branch": "v2.12.7",
+    "directory": "libxml2",
+    "patch_directory": "",
+    "build_cmd": [
+      "cmake -B build -S . \\",
+      "  -DBUILD_SHARED_LIBS=off \\",
+      "  -DLIBXML2_WITH_CATALOG=off \\",
+      "  -DLIBXML2_WITH_TESTS=off \\",
+      "  -DLIBXML2_WITH_PROGRAMS=off \\",
+      "  -DLIBXML2_WITH_PYTHON=off \\",
+      "  -DLIBXML2_WITH_LZMA=off \\",
+      "  -DLIBXML2_WITH_ICONV=off \\",
+      "  -DCMAKE_C_COMPILER=MANIFEST_VAR_CROSS_COMPILATION_ABS_CC \\",
+      "  -DCMAKE_AR=MANIFEST_VAR_CROSS_COMPILATION_ABS_AR \\",
+      "  -DCMAKE_RANLIB=MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB \\",
+      "  -DCMAKE_INSTALL_PREFIX=MANIFEST_VAR_INSTALL_PREFIX",
+      "cmake --build build",
+      "cmake --install build"
+    ]
+  },
+  {
+    "name": "libdrm",
+    "package_name": "LIBDRM",
+    "author": "mesa",
+    "description": "libdrm Direct Rendering Manager library and headers",
+    "dependencies": ["libpciaccess", "libxml2"],
+    "repo_url": "https://gitlab.freedesktop.org/mesa/drm.git",
+    "repo_branch": "libdrm-2.4.131",
+    "directory": "libdrm",
+    "patch_directory": "MANIFEST_VAR_MANIFEST_DIRECTORY/patches/libdrm",
+    "build_cmd": [
+      "ln -s /usr/include/libdrm /usr/include/drm",
+      "meson setup build \\",
+      "  --default-library=static \\",
+      "  --prefix=MANIFEST_VAR_INSTALL_PREFIX \\",
+      "  --cross-file=MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE \\",
+      "  -Dudev=false -Dtests=false -Dinstall-test-programs=false",
+      "meson compile -C build",
+      "meson install -C build"
+    ]
+  },
+  {
+    "name": "libtsm",
+    "package_name": "LIBTSM",
+    "author": "Aetf",
+    "description": "Terminal-emulator State Machine",
+    "dependencies": [],
+    "repo_url": "https://github.com/Aetf/libtsm.git",
+    "repo_branch": "v4.1.0",
+    "directory": "libtsm",
+    "patch_directory": "MANIFEST_VAR_MANIFEST_DIRECTORY/patches/libtsm",
+    "build_cmd": [
+      "cmake -B build -S . \\",
+      "  -DBUILD_SHARED_LIBS=off \\",
+      "  -DCMAKE_C_COMPILER=MANIFEST_VAR_CROSS_COMPILATION_ABS_CC \\",
+      "  -DCMAKE_AR=MANIFEST_VAR_CROSS_COMPILATION_ABS_AR \\",
+      "  -DCMAKE_RANLIB=MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB \\",
+      "  -DCMAKE_INSTALL_PREFIX=MANIFEST_VAR_INSTALL_PREFIX",
+      "cmake --build build",
+      "cmake --install build"
+    ]
+  },
+  {
+    "name": "frecon",
+    "package_name": "FRECON",
+    "author": "Google LLC",
+    "description": "Console for devices using KMS (kernel mode setting) only; replaces the kernel's Virtual Terminal (VT) console",
+    "dependencies": ["libpng", "zlib", "libtsm", "libdrm"],
+    "repo_url": "https://chromium.googlesource.com/chromiumos/platform/frecon.git",
+    "repo_branch": "release-R123-15786.B",
+    "directory": "frecon",
+    "patch_directory": "MANIFEST_VAR_MANIFEST_DIRECTORY/patches/frecon",
+    "build_cmd": [
+      "make clean",
+      "ARCH=MANIFEST_VAR_TARGET_ARCHITECTURE make all FRECON_LITE=1 NOSTRIP=0 \\",
+      "  CROSS_COMPILE=MANIFEST_VAR_CROSS_COMPILATION_DASH \\",
+      "  CFLAGS=\"-fno-PIE -fno-PIC -Wall -Wsign-compare -Wpointer-arith -Wcast-qual -Wcast-align -IMANIFEST_VAR_INSTALL_PREFIX/include -I.\" \\",
+      "  LDLIBS=\"-no-pie -lpng -lz -ltsm -ldrm -lm -static -LMANIFEST_VAR_INSTALL_PREFIX/lib -IMANIFEST_VAR_INSTALL_PREFIX/include -I.\"",
+      "mkdir -p /initfs/bin",
+      "cp frecon-lite /initfs/bin/frecon"
+    ]
+  },
+  {
+    "name": "depthloader",
+    "package_name": "DEPTHLOADER",
+    "author": "kxtzownsu",
+    "description": "",
+    "dependencies": [],
+    "repo_url": "",
+    "repo_branch": "",
+    "directory": "depthloader",
+    "patch_directory": "",
+    "build_cmd": [
+      "rustup target add MANIFEST_VAR_TARGET_ARCHITECTURE-unknown-linux-musl",
+      "make all VERBOSE=1 ARCH=MANIFEST_VAR_TARGET_ARCHITECTURE BIN_STRIP=MANIFEST_VAR_CROSS_COMPILATION_ABS_STRIP BIN_OBJCOPY=MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJCOPY",
+      "mkdir -p /initfs/bin",
+      "cp /packages/MANIFEST_VAR_PACKAGE_DIRECTORY/build/MANIFEST_VAR_TARGET_ARCHITECTURE/bin/depthloader /initfs/bin/depthloader"
+    ]
+  },
+  {
+    "name": "busybox",
+    "package_name": "BUSYBOX",
+    "author": "busybox",
+    "description": "",
+    "dependencies": [],
+    "repo_url": "https://github.com/mirror/busybox.git",
+    "repo_branch": "1_36_stable",
+    "directory": "busybox",
+    "patch_directory": "",
+    "config_file": "true",
+    "build_cmd": [
+      "make oldconfig CROSS_COMPILE=MANIFEST_VAR_CROSS_COMPILATION_DASH ARCH=MANIFEST_VAR_TARGET_ARCHITECTURE",
+      "make -j$(nproc) CROSS_COMPILE=MANIFEST_VAR_CROSS_COMPILATION_DASH ARCH=MANIFEST_VAR_TARGET_ARCHITECTURE EXTRA_CFLAGS='-fno-PIE -fno-PIC' EXTRA_LDFLAGS='-no-pie -static'",
+      "make install CONFIG_PREFIX=/initfs CROSS_COMPILE=MANIFEST_VAR_CROSS_COMPILATION_DASH",
+      "ln -sf /sbin/init /initfs/init",
+      "mkdir /initfs/dev",
+      "mknod -m 600 /initfs/dev/console c 5 1",
+      "mknod -m 666 /initfs/dev/null c 1 3",
+      "mknod -m 666 /initfs/dev/zero c 1 5",
+      "chmod +x /initfs/init",
+      "chmod +x /initfs/etc/init.d/rcS 2>/dev/null || true"
+    ]
+  }
+]

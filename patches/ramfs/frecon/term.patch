@@ -1,0 +1,33 @@
+--- a/term.c
++++ b/term.c
+@@ -76,12 +76,13 @@
+     }
+  }
+  
+-static int term_draw_cell(struct tsm_screen* screen, uint32_t id,
+-             const uint32_t* ch, size_t len,
+-             unsigned int cwidth, unsigned int posx,
+-             unsigned int posy,
+-             const struct tsm_screen_attr* attr,
+-             tsm_age_t age, void* data)
++static int term_draw_cell(struct tsm_screen* screen, unsigned long id,
++                          const uint32_t *ch, size_t len,
++                          unsigned int width,
++                          unsigned int posx, unsigned int posy,
++                          const struct tsm_screen_attr *attr,
++                          tsm_age_t age,
++                          void *data)
+ {
+     terminal_t* terminal = (terminal_t*)data;
+     uint32_t front_color, back_color;
+@@ -349,8 +350,8 @@
+     return false;
+ }
+  
+-static void term_osc_cb(struct tsm_vte *vte, const uint32_t *osc_string,
+-           size_t osc_len, void *data)
++static void term_osc_cb(struct tsm_vte *vte, const char *osc_string,
++           unsigned long osc_len, void *data)
+ {
+     terminal_t* terminal = (terminal_t*)data;
+     size_t i;

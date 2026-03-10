@@ -1,0 +1,13 @@
+diff --git a/fb.c b/fb.c
+index 77219c2..9e81ddf 100644
+--- a/fb.c
++++ b/fb.c
+@@ -4,7 +4,7 @@
+  * found in the LICENSE file.
+  */
+ 
+-#include <drm_fourcc.h>
++#include <drm/drm_fourcc.h>
+ #include <errno.h>
+ #include <fcntl.h>
+ #include <stdbool.h>

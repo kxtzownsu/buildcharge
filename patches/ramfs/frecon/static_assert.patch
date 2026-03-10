@@ -1,0 +1,15 @@
+diff --git a/main.c b/main.c
+index db7e112..a3e46c0 100644
+--- a/main.c
++++ b/main.c
+@@ -28,6 +28,10 @@
+ 
+ #define  DBUS_WAIT_DELAY_US  50000
+ 
++#if __STDC_VERSION__ < 201112L
++#define static_assert(cond, msg) typedef char static_assert_##__LINE__[(cond)?1:-1]
++#endif
++
+ /* Splash screen */
+ splash_t* splash;
+ 

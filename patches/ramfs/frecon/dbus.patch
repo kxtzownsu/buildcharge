@@ -1,0 +1,13 @@
+diff --git a/dbus_lite.c b/dbus_lite.c
+index 6765f86..232e01a 100644
+--- a/dbus_lite.c
++++ b/dbus_lite.c
+@@ -6,6 +6,8 @@
+ 
+ #include <stdlib.h>
+ #include <stdbool.h>
++#include "dbus.h"
++#include <sys/select.h>
+ 
+ bool dbus_init()
+ {

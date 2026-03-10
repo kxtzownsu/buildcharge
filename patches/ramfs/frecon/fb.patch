@@ -1,0 +1,13 @@
+diff --git a/fb.h b/fb.h
+index 8c67e0f..9b61bec 100644
+--- a/fb.h
++++ b/fb.h
+@@ -75,7 +75,7 @@ bool static inline fb_stepper_step_x(fb_stepper_t *s, uint32_t rgba)
+        return true;
+ }
+ 
+-bool inline fb_stepper_step_y(fb_stepper_t *s)
++bool static inline fb_stepper_step_y(fb_stepper_t *s)
+ {
+        s->y++;
+        return s->y < s->h;

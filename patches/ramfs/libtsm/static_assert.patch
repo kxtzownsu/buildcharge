@@ -1,0 +1,16 @@
+diff --git a/src/shared/shl-macro.h b/src/shared/shl-macro.h
+index 67607bd..8d1037d 100644
+--- a/src/shared/shl-macro.h
++++ b/src/shared/shl-macro.h
+@@ -20,9 +20,8 @@
+ #include <string.h>
+ #include <unistd.h>
+
+-/* macOS compatibility */
+-#if !defined static_assert
+-#define static_assert _Static_assert
++#if __STDC_VERSION__ < 201112L
++#define static_assert(cond, msg) typedef char static_assert_##__LINE__[(cond)?1:-1]
+ #endif
+
+ /* sanity checks required for some macros */

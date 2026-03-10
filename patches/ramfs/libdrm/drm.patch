@@ -1,0 +1,28 @@
+diff --git a/xf86drm.h b/xf86drm.h
+index b45337a4..9f8cbcb9 100644
+--- a/xf86drm.h
++++ b/xf86drm.h
+@@ -37,7 +37,7 @@
+ #include <stdarg.h>
+ #include <sys/types.h>
+ #include <stdint.h>
+-#include <drm.h>
++#include <drm/drm.h>
+ 
+ #if defined(__cplusplus)
+ extern "C" {
+diff --git a/xf86drmMode.h b/xf86drmMode.h
+index 08487887..a5918b6a 100644
+--- a/xf86drmMode.h
++++ b/xf86drmMode.h
+@@ -40,8 +40,8 @@
+ extern "C" {
+ #endif
+ 
+-#include <drm.h>
+-#include <drm_mode.h>
++#include <drm/drm.h>
++#include <drm/drm_mode.h>
+ #include <stdbool.h>
+ #include <stddef.h>
+ #include <stdint.h>
