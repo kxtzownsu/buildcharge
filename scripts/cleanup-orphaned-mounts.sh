@@ -5,7 +5,7 @@ source "${SCRIPT_DIR}"/lib/common.sh
 
 require_root
 
-SEARCH_PATTERN="${1:-buildcharge}"
+SEARCH_PATTERN="${1:-${project_name}}"
 MOUNTS=$(mount | grep "$SEARCH_PATTERN" | grep "/build-env/" | awk '{print $3}' | sort -r)
 
 [[ -z "$MOUNTS" ]] && exit 0

@@ -17,6 +17,7 @@ error() {
   exit $code
 }
 
+project_name="buildcharge"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(realpath "$SCRIPT_DIR/../..")"
 MANIFEST_FILE="$1"
@@ -28,11 +29,11 @@ command -v jq >/dev/null 2>&1 || error 1 "jq is required to generate Kconfig"
 mkdir -p "$(dirname "$OUTPUT_KCONFIG")"
 
 {
-cat <<'EOF'
+cat <<EOF
 # Automatically generated from ramfs/manifest.json
 # Do not edit directly.
 
-mainmenu "buildcharge Configuration"
+mainmenu "${project_name} Configuration"
 
 choice
   prompt "Target architecture"
