@@ -1,18 +1,31 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/../lib/common.sh"
+log() {
+  local section="$1"
+  local message="$2"
+  [[ ${#section} -gt 8 ]] && section="${section:0:5}..."
+  while [[ ${#section} -lt 8 ]]; do section="${section} "; done
+  section=$(echo "$section" | tr '[:lower:]' '[:upper:]')
+  echo "  ${section}  ${message}"
+}
 
-# TODO(kxtz): don't hardcode PROJECT_DIR, it should be passed to us, otherwise assume it's `.`
+error() {
+  local code=$1
+  shift
+  log "ERROR" "$@"
+  exit $code
+}
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(realpath "$SCRIPT_DIR/../..")"
 DOT_CONFIG="$PROJECT_DIR/.config"
 KCONFIG_FILE="$PROJECT_DIR/build/Kconfig"
 CMD="${1:-menuconfig}"
 
-command -v menuconfig >/dev/null 2>&1 || python3 -c "import kconfiglib" >/dev/null 2>&1 || error 1 "kconfiglib is not installed."
+command -v menuconfig >/dev/null 2>&1 || python3 -c "import kconfiglib" >/dev/null 2>&1 || error 1 "kconfiglib is not installed"
 
-kcmd(){
+kcmd() {
   local name="$1"
   shift
 
@@ -25,22 +38,15 @@ kcmd(){
 }
 
 [[ ! -f "$KCONFIG_FILE" ]] && {
-  log "gen" "Kconfig"
-  bash "$SCRIPT_DIR/gen-kconfig.sh"
+  bash "$SCRIPT_DIR/gen-kconfig.sh" "$PROJECT_DIR/ramfs/manifest.json"
 }
 
 export KCONFIG_CONFIG="$DOT_CONFIG"
 
 case "$CMD" in
-  menuconfig)
+  menuconfig|guiconfig)
     cd "$PROJECT_DIR"
-    kcmd menuconfig "$KCONFIG_FILE"
-    bash "$SCRIPT_DIR/gen-config.sh"
-    ;;
-
-  guiconfig)
-    cd "$PROJECT_DIR"
-    kcmd guiconfig "$KCONFIG_FILE"
+    kcmd "$CMD" "$KCONFIG_FILE"
     bash "$SCRIPT_DIR/gen-config.sh"
     ;;
 
@@ -61,7 +67,7 @@ case "$CMD" in
     ;;
 
   gen-kconfig)
-    bash "$SCRIPT_DIR/gen-kconfig.sh" "$MANIFEST_FILE"
+    bash "$SCRIPT_DIR/gen-kconfig.sh" "${2:-$PROJECT_DIR/ramfs/manifest.json}"
     ;;
 
   gen-config)
@@ -69,6 +75,6 @@ case "$CMD" in
     ;;
 
   *)
-    error 1 "Unknown command: $CMD (expected menuconfig|guiconfig|check|olddefconfig|gen-kconfig|gen-config)"
+    error 1 "unknown command: $CMD"
     ;;
 esac

@@ -1,18 +1,29 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}"/../lib/common.sh
+log() {
+  local section="$1"
+  local message="$2"
+  [[ ${#section} -gt 8 ]] && section="${section:0:5}..."
+  while [[ ${#section} -lt 8 ]]; do section="${section} "; done
+  section=$(echo "$section" | tr '[:lower:]' '[:upper:]')
+  echo "  ${section}  ${message}"
+}
 
+error() {
+  local code=$1
+  shift
+  log "ERROR" "$@"
+  exit $code
+}
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(realpath "$SCRIPT_DIR/../..")"
 DOT_CONFIG="$PROJECT_DIR/.config"
 CONFIG_SH_OUT="$PROJECT_DIR/scripts/lib/generated/config.sh"
 CONFIG_H_OUT="$PROJECT_DIR/build/config.h"
 
-# Normally, this shouldn't be triggered due to the build flow,
-# but if this is ran on it's own and we don't have a valid dotconfig,
-# show an error about it instead of failing silently.
-[[ ! -f "$DOT_CONFIG" ]] && error ".config not found. Run 'make config' or 'make menuconfig' first."
+[[ ! -f "$DOT_CONFIG" ]] && error 1 ".config not found. Run 'make config' or 'make menuconfig' first."
 
 mkdir -p "$(dirname "$CONFIG_SH_OUT")"
 mkdir -p "$(dirname "$CONFIG_H_OUT")"

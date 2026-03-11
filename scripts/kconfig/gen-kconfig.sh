@@ -1,9 +1,23 @@
 #!/bin/bash
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}"/../lib/common.sh
+log() {
+  local section="$1"
+  local message="$2"
+  [[ ${#section} -gt 8 ]] && section="${section:0:5}..."
+  while [[ ${#section} -lt 8 ]]; do section="${section} "; done
+  section=$(echo "$section" | tr '[:lower:]' '[:upper:]')
+  echo "  ${section}  ${message}"
+}
 
+error() {
+  local code=$1
+  shift
+  log "ERROR" "$@"
+  exit $code
+}
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(realpath "$SCRIPT_DIR/../..")"
 MANIFEST_FILE="$1"
 OUTPUT_KCONFIG="$PROJECT_DIR/build/Kconfig"

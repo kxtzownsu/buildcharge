@@ -8,20 +8,24 @@ ENV_OS="Alpine"
 
 ENV_DIR="$1"
 ENV_ARCH="$2"
-VERBOSE="$3"
 
-[[ -z "$ENV_DIR" ]] && error 1 "missing build-env dir!"
-[[ -z "$ENV_ARCH" ]] && error 1 "missing architecture!"
+require_arg "$ENV_DIR" "build-env dir"
+require_arg "$ENV_ARCH" "architecture"
+
+[[ ! -d "$ENV_DIR" ]] && mkdir -p "$ENV_DIR"
+
+DOWNLOAD_URL="${REPO_URL}/releases/download/${ENV_OS,,}-${ENV_ARCH}-latest/${ENV_OS}.tgz"
+TARBALL="${ENV_DIR}/os.tgz"
 
 log "WGET" "${ENV_OS}.tgz"
-# this is github-specific & build-env specific especially with the release names
-wget -q --show-progress -O "${ENV_DIR}/os.tgz" "${REPO_URL}/releases/download/${ENV_OS,,}-${ENV_ARCH}-latest/${ENV_OS}.tgz"
+wget -q --show-progress -O "$TARBALL" "$DOWNLOAD_URL" || error 1 "failed to download build environment"
 
 log "EXTRACT" "${ENV_OS}.tgz"
-if [ "$VERBOSE" == "1" ]; then
-  tar -xzf "${ENV_DIR}/os.tgz" -C "${ENV_DIR}"
+if [[ "$VERBOSE" == "1" ]]; then
+  tar -xzf "$TARBALL" -C "$ENV_DIR" || error 1 "failed to extract tarball"
 else
-  tar -xzf "${ENV_DIR}/os.tgz" -C "${ENV_DIR}" 2>/dev/null
+  tar -xzf "$TARBALL" -C "$ENV_DIR" 2>/dev/null || error 1 "failed to extract tarball"
 fi
 
-rm -f "${ENV_DIR}/os.tgz"
+rm -f "$TARBALL"
+log "DONE" "build environment ready"
