@@ -1,4 +1,5 @@
 project_name = buildcharge
+USE_DEFAULT_CONFIG := 1
 
 TARGET :=
 arm64: TARGET := arm64
