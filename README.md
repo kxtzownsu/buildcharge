@@ -6,5 +6,5 @@ buildroot-like project that allows you to build a mainline linux kernel & initra
 >The name of this project is NOT finalized and may change at any point. To submit name requests, dm me on discord: [@kxtzownsu](https://discord.com/users/952792525637312552)
 
 ## Licensing
-The project is licensed under the GPLv2 licence with the exception of the following folders:
+The project is licensed under the GPLv2 license with the exception of the following folders:
 - `scripts/kconfig`: All Right Reserved (c) kxtzownsu 2026

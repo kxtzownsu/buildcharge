@@ -21,6 +21,7 @@ MANIFEST_VAR_CROSS_COMPILATION="${CROSS_COMPILER_TOOLCHAIN%-}"
 MANIFEST_VAR_CROSS_COMPILATION_DASH="${MANIFEST_VAR_CROSS_COMPILATION}-"
 MANIFEST_VAR_TARGET_ARCHITECTURE="$TARGET_ARCH"
 MANIFEST_VAR_MANIFEST_DIRECTORY="$MANIFEST_DIRECTORY"
+MANIFEST_VAR_PROJECT_DIRECTORY="/${project_name}"
 
 case "$TARGET_ARCH" in
   x86_64|aarch64) ;;
@@ -64,37 +65,42 @@ init_manifest_vars() {
   MANIFEST_VAR_PACKAGE_DIRECTORY="$(jq -r .directory <<<"$entry")"
   MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY="$(jq -r .patch_directory <<<"$entry")"
   MANIFEST_VAR_PACKAGE_CONFIG_FILE="$(jq -r '.config_file // false' <<<"$entry")"
+  MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY="$(jq -r .overlay_directory <<<"$entry")"
 }
 
-# the order matters!
 expand_manifest_vars() {
   local s="$1"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_PKGCONFIG/$MANIFEST_VAR_CROSS_COMPILATION_ABS_PKGCONFIG}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJCOPY/$MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJCOPY}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJDUMP/$MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJDUMP}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB/$MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_STRIP/$MANIFEST_VAR_CROSS_COMPILATION_ABS_STRIP}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_CXX/$MANIFEST_VAR_CROSS_COMPILATION_ABS_CXX}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_AR/$MANIFEST_VAR_CROSS_COMPILATION_ABS_AR}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_ABS_CC/$MANIFEST_VAR_CROSS_COMPILATION_ABS_CC}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE/$MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION_DASH/$MANIFEST_VAR_CROSS_COMPILATION_DASH}"
-  s="${s//MANIFEST_VAR_CROSS_COMPILATION/$MANIFEST_VAR_CROSS_COMPILATION}"
-  s="${s//MANIFEST_VAR_TARGET_ARCHITECTURE/$MANIFEST_VAR_TARGET_ARCHITECTURE}"
-  s="${s//MANIFEST_VAR_HOST_ARCHITECTURE/$MANIFEST_VAR_HOST_ARCHITECTURE}"
-  s="${s//MANIFEST_VAR_INSTALL_PREFIX/$MANIFEST_VAR_INSTALL_PREFIX}"
-  s="${s//MANIFEST_VAR_MANIFEST_DIRECTORY/$MANIFEST_VAR_MANIFEST_DIRECTORY}"
-  s="${s//MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY/$MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY}"
-  s="${s//MANIFEST_VAR_PACKAGE_CONFIG_FILE/$MANIFEST_VAR_PACKAGE_CONFIG_FILE}"
-  s="${s//MANIFEST_VAR_PACKAGE_REPO_BRANCH/$MANIFEST_VAR_PACKAGE_REPO_BRANCH}"
-  s="${s//MANIFEST_VAR_PACKAGE_REPO_URL/$MANIFEST_VAR_PACKAGE_REPO_URL}"
-  s="${s//MANIFEST_VAR_PACKAGE_DESCRIPTION/$MANIFEST_VAR_PACKAGE_DESCRIPTION}"
-  s="${s//MANIFEST_VAR_PACKAGE_DIRECTORY/$MANIFEST_VAR_PACKAGE_DIRECTORY}"
-  s="${s//MANIFEST_VAR_PACKAGE_NAME_LOWER/$MANIFEST_VAR_PACKAGE_NAME_LOWER}"
-  s="${s//MANIFEST_VAR_PACKAGE_NAME_UPPER/$MANIFEST_VAR_PACKAGE_NAME_UPPER}"
-  s="${s//MANIFEST_VAR_PACKAGE_NAME/$MANIFEST_VAR_PACKAGE_NAME}"
-  s="${s//MANIFEST_VAR_PACKAGE_AUTHOR/$MANIFEST_VAR_PACKAGE_AUTHOR}"
-  printf '%s' "$s"
+  
+  # export so envsubst sees them...
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_PKGCONFIG
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJCOPY
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJDUMP
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_STRIP
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_CXX
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_AR
+  export MANIFEST_VAR_CROSS_COMPILATION_ABS_CC
+  export MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE
+  export MANIFEST_VAR_CROSS_COMPILATION_DASH
+  export MANIFEST_VAR_CROSS_COMPILATION
+  export MANIFEST_VAR_TARGET_ARCHITECTURE
+  export MANIFEST_VAR_HOST_ARCHITECTURE
+  export MANIFEST_VAR_INSTALL_PREFIX
+  export MANIFEST_VAR_MANIFEST_DIRECTORY
+  export MANIFEST_VAR_PROJECT_DIRECTORY
+  export MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY
+  export MANIFEST_VAR_PACKAGE_CONFIG_FILE
+  export MANIFEST_VAR_PACKAGE_REPO_BRANCH
+  export MANIFEST_VAR_PACKAGE_REPO_URL
+  export MANIFEST_VAR_PACKAGE_DESCRIPTION
+  export MANIFEST_VAR_PACKAGE_DIRECTORY
+  export MANIFEST_VAR_PACKAGE_NAME_LOWER
+  export MANIFEST_VAR_PACKAGE_NAME_UPPER
+  export MANIFEST_VAR_PACKAGE_NAME
+  export MANIFEST_VAR_PACKAGE_AUTHOR
+  export MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY
+  
+  printf '%s' "$s" | envsubst
 }
 
 strip_empty_cross_file() {
@@ -110,11 +116,14 @@ main() {
   while IFS= read -r entry; do
     init_manifest_vars "$entry"
 
-    local expanded_patch_dir expanded_build_cmd_json expanded_entry
+    local expanded_patch_dir expanded_overlay_dir expanded_build_cmd_json expanded_entry
     expanded_patch_dir="$(expand_manifest_vars "$MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY")"
+    expanded_overlay_dir="$(expand_manifest_vars "$MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY")"
     expanded_build_cmd_json="$(
-      jq -r 'if (.build_cmd | type) == "array" then .build_cmd[] else .build_cmd end' <<<"$entry" |
-      while IFS= read -r line; do expand_manifest_vars "$line"; echo; done |
+      while IFS= read -r line; do 
+        expand_manifest_vars "$line"
+        echo
+      done < <(jq -r 'if (.build_cmd | type) == "array" then .build_cmd[] else .build_cmd end' <<<"$entry") |
       sed '/^ *--cross-file= *\\$/d' |
       sed 's/ *--cross-file= *\\$/ \\/' |
       sed 's/ *--cross-file=$//' |
@@ -122,8 +131,9 @@ main() {
     )"
     expanded_entry="$(jq \
       --arg patch_dir "$expanded_patch_dir" \
+      --arg overlay_dir "$expanded_overlay_dir" \
       --argjson build_cmd "$expanded_build_cmd_json" \
-      '.patch_directory = $patch_dir | .build_cmd = $build_cmd' \
+      '.patch_directory = $patch_dir | .overlay_directory = $overlay_dir | .build_cmd = $build_cmd' \
       <<<"$entry")"
 
     output_entries+=("$expanded_entry")
