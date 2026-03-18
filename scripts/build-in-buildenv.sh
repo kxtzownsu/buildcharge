@@ -1,9 +1,7 @@
 #!/bin/bash
-VERBOSE="$4"
-[[ "$VERBOSE" == "1" ]] && set -x
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}"/lib/common.sh
+[[ "$VERBOSE" == 1 ]] && set -x
 
 ENV_DIR="$1"
 PROJECT_DIR="$2"

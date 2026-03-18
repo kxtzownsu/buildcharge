@@ -1,7 +1,7 @@
 #!/bin/bash
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}"/lib/common.sh
+[[ "$VERBOSE" == 1 ]] && set -x
 
 REPO_URL="https://github.com/kxtzownsu/build-env"
 ENV_OS="Alpine"
@@ -28,4 +28,3 @@ else
 fi
 
 rm -f "$TARBALL"
-log "DONE" "build environment ready"

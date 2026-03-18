@@ -2,6 +2,14 @@ HOST_ARCH := $(shell uname -m)
 TARGET ?=
 CROSS_COMPILE ?=
 BUILDENV ?=
+VERBOSE := 0
+
+# We expect `VERBOSE=1`, nothing else.
+ifeq ($(VERBOSE),1)
+Q :=
+else
+Q := @
+endif
 
 ifeq ($(TARGET),arm64)
 ARCH := aarch64
@@ -44,6 +52,7 @@ endif
 ### Build utilities ###
 MAKE ?= make
 SHELL := /bin/bash
+SUDO ?= sudo
 CC := $(CROSS_COMPILE)gcc
 CXX := $(CROSS_COMPILE)g++
 AS := $(CROSS_COMPILE)as
