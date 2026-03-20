@@ -16,7 +16,7 @@ menuconfig:
 guiconfig:
 	$(Q)$(KCONFIG_SCRIPT) guiconfig $(KCONFIG_FLAGS)
 
-config: gen-kconfig gen-config
+config:
 	$(Q)if [ "$(USE_DEFAULT_CONFIG)" = "1" ]; then \
 		cp $(PROJECT_DIR)/configs/default.$(TARGET) $(DOT_CONFIG); \
 	else \
