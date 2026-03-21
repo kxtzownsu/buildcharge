@@ -52,7 +52,6 @@ endif
 ### Build utilities ###
 MAKE ?= make
 SHELL := /bin/bash
-SUDO ?= sudo
 CC := $(CROSS_COMPILE)gcc
 CXX := $(CROSS_COMPILE)g++
 AS := $(CROSS_COMPILE)as
@@ -62,6 +61,7 @@ OBJCOPY := $(CROSS_COMPILE)objcopy
 STRIP := $(CROSS_COMPILE)strip
 
 ### Standard utilities ###
+SUDO ?= sudo
 COPY ?= cp
 MOVE ?= mv
 RM ?= rm

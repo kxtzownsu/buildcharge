@@ -77,11 +77,11 @@ cleanup-all:
 # in a brick.
 fullclean: cleanup-all
 	@echo "  SUDORM    $(BUILDENV_DIR)"
-	@sudo $(RM) -rf $(BUILDENV_DIR)
+	@$(SUDO) $(RM) -rf $(BUILDENV_DIR)
 	@echo "  SUDORM    $(WORK_DIR)"
-	@sudo $(RM) -rf $(WORK_DIR)
+	@$(SUDO) $(RM) -rf $(WORK_DIR)
 	@echo "  SUDORM    $(OUTDIR)"
-	@sudo $(RM) -rf $(OUTDIR)
+	@$(SUDO) $(RM) -rf $(OUTDIR)
 	@echo "  RM        $(PROJECT_DIR)/scripts/lib/generated"
 	@$(RM) -rf $(PROJECT_DIR)/scripts/lib/generated
 	@echo "  RM        .config"
