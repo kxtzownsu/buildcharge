@@ -101,3 +101,4 @@ internal_buildenv:
 	$(Q)$(CHMOD) -R +x $(INITFS_DIR)/sbin/
 	$(Q)cd $(INITFS_DIR) && find . -print | cpio -o -H newc -F $(INITFS_CPIO)
 	$(Q)$(MOVE) $(INITFS_DIR)/$(INITFS_CPIO) $(PROJECT_DIR)/build/ramfs/
+	$(Q)$(XZ) -kf -9 --check=crc32 $(PROJECT_DIR)/build/ramfs/$(INITFS_CPIO)

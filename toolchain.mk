@@ -69,3 +69,4 @@ MKDIR ?= mkdir
 TOUCH ?= touch
 CHMOD ?= chmod
 CHOWN ?= chown
+XZ ?= xz
