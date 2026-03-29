@@ -1,0 +1,25 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [ x86_64, aarch64 ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add deps
+        run: sudo apt update && sudo apt upgrade -y && sudo apt install -y python3-kconfiglib
+      - name: Build kpart
+        run: make ${{ matrix.arch }}
+      - name: Upload build files
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildcharge-${{ matrix.arch }}
+          path: out
