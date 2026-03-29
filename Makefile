@@ -5,8 +5,10 @@ KERNEL_BRANCH := v6.12.48
 
 TARGET :=
 # ramfs relies on target as aarch64, not arm64, even though they're the same.
-arm64: TARGET := aarch64
+aarch64: TARGET := aarch64
 x86_64: TARGET := x86_64
+clean-aarch64: TARGET := aarch64
+clean-x86_64: TARGET := x86_64
 internal_buildenv: BUILDENV := 1 
 
 ifeq ($(TARGET),aarch64)
@@ -25,6 +27,7 @@ OUTDIR := $(abspath $(PROJECT_DIR)/out/)
 BUILDENV_DIR := $(abspath $(WORK_DIR)/build-env/)
 CMDLINE := $(project_name) console=tty0
 TMPFILE := /tmp/$(project_name)
+KERNEL_BUILD_DIR := $(WORK_DIR)/kernel/$(TARGET)/
 include kconfig.mk
 
 ifeq ($(BUILDENV),1)
@@ -61,11 +64,11 @@ EXEC := TMPFILE=$(TMPFILE) RECOVERY=$(RECOVERY) VERBOSE=$(VERBOSE) PROJECT_DIR=$
 usage:
 	@echo "usage: make [x86_64|aarch64]"
 
-# Aarch64 is the same as Arm64.
-aarch64: arm64
+# Arm64 is the same as Aarch64.
+arm64: aarch64
 
 x86_64: build-inside-buildenv
-arm64: build-inside-buildenv
+aarch64: build-inside-buildenv
 
 $(WORK_DIR):
 	$(Q)$(MKDIR) -p $(WORK_DIR)
@@ -95,6 +98,27 @@ cleanup-all:
 	@echo "  UNMOUNT"
 	$(Q)$(SUDO) $(EXEC) scripts/cleanup-orphaned-mounts.sh $(project_name)
 
+clean:
+	@echo "The typical 'make clean' does not work with buildcharge."
+	@echo "You must use 'make clean-[arch], for example: make clean-x86_64 or make clean-aarch64"
+
+clean-arm64: clean-aarch64
+
+clean-x86_64 clean-aarch64:
+	$(Q)$(MAKE) TARGET=$(TARGET) internal_clean
+
+internal_clean:
+	@echo "  SUDORM    $(BZIMAGE)"
+	$(Q)$(SUDO) $(RM) -rf $(BZIMAGE)
+	@echo "  SUDORM    $(INITFS_CPIO)"
+	$(Q)$(SUDO) $(RM) -rf $(INITFS_CPIO)
+	@echo "  SUDORM    $(INITFS_CPIOZ)"
+	$(Q)$(SUDO) $(RM) -rf $(INITFS_CPIOZ)
+	@echo "  SUDORM    $(KPART)"
+	$(Q)$(SUDO) $(RM) -rf $(KPART)
+	@echo "  SUDORM    $(INITFS_DIR)"
+	$(Q)$(SUDO) $(RM) -rf $(INITFS_DIR)
+
 # fullclean is dangerous if stuff is mounted & could result
 # in a brick.
 fullclean: cleanup-all
@@ -123,15 +147,18 @@ else
 endif
 	$(Q)apk add elfutils-dev bc ncurses-dev mpfr-dev gmp-dev mpc1-dev
 	$(Q)$(FIND) $(PROJECT_DIR)/patches/kernel/ -type f -print0 | xargs -0 -n 1 patch -fud $(KERNEL_DIR) -p1
-	$(Q)$(COPY) $(PROJECT_DIR)/configs/kernel/config.$(TARGET) $(KERNEL_DIR)/.config
-	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) O=build_$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) olddefconfig
-	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) O=build_$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR)
+	$(Q)$(MKDIR) -p $(KERNEL_BUILD_DIR)
+# 	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) O=$(KERNEL_BUILD_DIR) mrproper
+	$(Q)$(COPY) $(PROJECT_DIR)/configs/kernel/config.$(TARGET) $(KERNEL_BUILD_DIR)/.config
+# 	$(Q)$(COPY) $(PROJECT_DIR)/configs/kernel/config.$(TARGET) $(KERNEL_DIR)/.config
+	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) O=$(KERNEL_BUILD_DIR) olddefconfig
+	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) O=$(KERNEL_BUILD_DIR)
 ifeq ($(TARGET),aarch64)
-	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) O=build_$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) dtbs_install INSTALL_DTBS_PATH=$(WORK_DIR)/dtbs/
-	$(Q)$(COPY) $(KERNEL_DIR)/arch/$(KERNEL_TARGET)/boot/Image.gz $(BZIMAGE)
+	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) O=$(KERNEL_BUILD_DIR) dtbs_install INSTALL_DTBS_PATH=$(WORK_DIR)/dtbs/
+	$(Q)$(COPY) $(KERNEL_BUILD_DIR)/arch/$(KERNEL_TARGET)/boot/Image.gz $(BZIMAGE)
 endif
 ifeq ($(TARGET),x86_64)
-	$(Q)$(COPY) $(KERNEL_DIR)/arch/$(KERNEL_TARGET)/boot/bzImage $(BZIMAGE)
+	$(Q)$(COPY) $(KERNEL_BUILD_DIR)/arch/$(KERNEL_TARGET)/boot/bzImage $(BZIMAGE)
 endif
 
 $(INITFS_CPIO):
