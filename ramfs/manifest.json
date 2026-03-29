@@ -145,11 +145,17 @@
     "author": "Google LLC",
     "description": "Console for devices using KMS (kernel mode setting) only; replaces the kernel's Virtual Terminal (VT) console",
     "dependencies": ["libpng", "zlib", "libtsm", "libdrm"],
+    "config_options": {
+      "SHELL": {
+        "dependencies": ["busybox"],
+        "description": "Whether or not to launch a shell once frecon is initialized in busybox"
+      }
+    },
     "repo_url": "https://chromium.googlesource.com/chromiumos/platform/frecon.git",
     "repo_branch": "release-R123-15786.B",
     "directory": "frecon",
     "patch_directory": "frecon",
-    "overlay_directory": "",
+    "overlay_directory": "${MANIFEST_VAR_PROJECT_DIRECTORY}/ramfs/overlays/${MANIFEST_VAR_PACKAGE_PACKAGE_NAME}/",
     "build_cmd": [
       "make clean",
       "make TARGET=frecon-lite ARCH=${MANIFEST_VAR_TARGET_ARCHITECTURE} OUT=build FRECON_LITE=1 NOSTRIP=0 all \\",
@@ -157,7 +163,8 @@
       "  CFLAGS=\"-fno-PIE -fno-PIC -Wall -Wsign-compare -Wpointer-arith -Wcast-qual -Wcast-align -I${MANIFEST_VAR_INSTALL_PREFIX}/include -I.\" \\",
       "  LDLIBS=\"-no-pie -lpng -lz -ltsm -ldrm -lm -static -L${MANIFEST_VAR_INSTALL_PREFIX}/lib -I${MANIFEST_VAR_INSTALL_PREFIX}/include -I.\"",
       "mkdir -p ${MANIFEST_VAR_INITFS_DIRECTORY}/bin",
-      "cp build/frecon-lite ${MANIFEST_VAR_INITFS_DIRECTORY}/bin/frecon"
+      "cp build/frecon-lite ${MANIFEST_VAR_INITFS_DIRECTORY}/bin/frecon",
+      "cp -rv ${MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY}/* ${MANIFEST_VAR_INITFS_DIRECTORY}/"
     ]
   },
   {
@@ -183,7 +190,8 @@
       "mknod -m 666 ${MANIFEST_VAR_INITFS_DIRECTORY}/dev/null c 1 3 2>/dev/null || true",
       "mknod -m 666 ${MANIFEST_VAR_INITFS_DIRECTORY}/dev/zero c 1 5 2>/dev/null || true",
       "chmod +x ${MANIFEST_VAR_INITFS_DIRECTORY}/init 2>/dev/null || true",
-      "chmod +x ${MANIFEST_VAR_INITFS_DIRECTORY}/etc/init.d/rcS 2>/dev/null || true"
+      "chmod +x ${MANIFEST_VAR_INITFS_DIRECTORY}/etc/init.d/rcS 2>/dev/null || true",
+      "cp ${MANIFEST_VAR_PROJECT_DIRECTORY}/scripts/lib/generated/config.sh ${MANIFEST_VAR_INITFS_DIRECTORY}/etc/config.sh"
     ]
   }
 ]

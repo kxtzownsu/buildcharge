@@ -111,6 +111,47 @@ EOF
         for line in "${help_lines[@]}"; do echo "    $line"; done
       fi
       echo ""
+
+      # config opts for this package
+      local has_cfg
+      has_cfg="$(jq -r 'has("config_options")' <<<"$entry")"
+
+      if [[ "$has_cfg" == "true" ]]; then
+        echo "if PACKAGE_${sym}"
+
+        jq -c '.config_options | to_entries[]' <<<"$entry" | while read -r opt; do
+          local opt_name opt_sym opt_desc opt_deps
+
+          opt_name="$(jq -r '.key' <<<"$opt")"
+          opt_sym="${opt_name^^}"
+          opt_sym="${opt_sym//-/_}"
+
+          opt_desc="$(jq -r '.value.description // ""' <<<"$opt")"
+          opt_deps="$(jq -r '.value.dependencies[]?' <<<"$opt")"
+
+          echo "config PACKAGE_${sym}_${opt_sym}"
+          echo "  bool \"${opt_name}\""
+          echo "  default n"
+          echo "  depends on PACKAGE_${sym}"
+
+          if [[ -n "$opt_deps" ]]; then
+            while IFS= read -r dep; do
+              [[ -z "$dep" ]] && continue
+              dep_sym="$(echo "$dep" | tr '[:lower:]-' '[:upper:]_')"
+              echo "  depends on PACKAGE_${dep_sym}"
+            done <<<"$opt_deps"
+          fi
+
+          if [[ -n "$opt_desc" && "$opt_desc" != "null" ]]; then
+            echo "  help"
+            echo "    $opt_desc"
+          fi
+
+          echo ""
+        done
+
+        echo "endif"
+      fi
     done < <(jq -c '.[]' "$manifest")
 
     echo "endif"
