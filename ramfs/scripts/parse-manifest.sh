@@ -67,6 +67,7 @@ init_manifest_vars() {
   MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY="$(jq -r .patch_directory <<<"$entry")"
   MANIFEST_VAR_PACKAGE_CONFIG_FILE="$(jq -r '.config_file // false' <<<"$entry")"
   MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY="$(jq -r .overlay_directory <<<"$entry")"
+  MANIFEST_VAR_INITFS_DIRECTORY="/initfs/${MANIFEST_VAR_TARGET_ARCHITECTURE}"
 }
 
 expand_manifest_vars() {
@@ -101,6 +102,7 @@ expand_manifest_vars() {
   export MANIFEST_VAR_PACKAGE_NAME
   export MANIFEST_VAR_PACKAGE_AUTHOR
   export MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY
+  export MANIFEST_VAR_INITFS_DIRECTORY
   
   printf '%s' "$s" | envsubst
 }
@@ -125,7 +127,7 @@ main() {
     # lol bugfixes...
     MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY="$expanded_overlay_dir" && export MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY
     MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY="$expanded_patch_dir" && export MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY
-    
+
     expanded_build_cmd_json="$(
       while IFS= read -r line; do 
         expand_manifest_vars "$line"
