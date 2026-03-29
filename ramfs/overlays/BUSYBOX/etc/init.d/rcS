@@ -41,7 +41,5 @@ done
 for script in /etc/init.d/S*; do
   [ -f "$script" ] && [ -x "$script" ] || continue
   [ "$(basename "$script")" = "rcS" ] && continue
-  
-  # the script may expect start as arg1, if not, idfk lol..
   "$script" start
 done

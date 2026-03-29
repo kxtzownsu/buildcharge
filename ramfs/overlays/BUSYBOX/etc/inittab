@@ -1,11 +1,5 @@
 ::sysinit:/bin/busybox chmod -R +x /etc/init.d/
-
 ::sysinit:/etc/init.d/rcS
-
-::sysinit:/sbin/mdev -s
-::sysinit:/sbin/mdev -d
-
-::respawn:/bin/sh
 
 ::shutdown:/bin/umount -a -r
 ::shutdown:/bin/sync

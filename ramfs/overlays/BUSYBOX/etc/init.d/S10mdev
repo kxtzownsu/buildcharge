@@ -1,0 +1,42 @@
+#!/bin/sh
+
+commandDispatcher(){
+  command="$1"
+  case "$command" in
+    "start")
+      startMdev
+      ;;
+    "stop")
+      stopMdev
+      ;;
+    "restart")
+      stopMdev
+      startMdev
+      ;;
+    *)
+      echo "Usage: $0 {start|stop|restart}"
+      exit 1
+      ;;
+  esac
+}
+
+startMdev(){
+  [ ! -x "/sbin/mdev" ] && echo "mdev binary not found" && exit 1
+  if [ -e /proc/sys/kernel/hotplug ]; then
+    echo "/sbin/mdev" > /proc/sys/kernel/hotplug
+  fi
+  /sbin/mdev -s
+
+  if [ $? -eq 0 ]; then
+    echo "mdev: device nodes populated."
+  else
+    echo "mdev: failed to populate devices."
+    exit 1
+  fi
+}
+
+stopMdev(){
+  echo "" > /proc/sys/kernel/hotplug
+}
+
+commandDispatcher "$@"
