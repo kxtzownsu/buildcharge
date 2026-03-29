@@ -16,37 +16,50 @@ else ifeq ($(TARGET),x86_64)
 endif
 
 include toolchain.mk
+include signing.mk
 
-WORK_DIR := $(abspath ./build/)
-CONFDIR := $(abspath ./configs/)
-OUTDIR := $(abspath ./out/)
-BUILDENV_DIR := $(abspath $(WORK_DIR)/build-env/)
 PROJECT_DIR := $(abspath .)
-CMDLINE="$(project_name) console=tty0"
-EXEC := VERBOSE=$(VERBOSE) PROJECT_DIR=$(PROJECT_DIR) $(SHELL)
+WORK_DIR := $(abspath $(PROJECT_DIR)/build/)
+CONFDIR := $(abspath $(PROJECT_DIR)/configs/)
+OUTDIR := $(abspath $(PROJECT_DIR)/out/)
+BUILDENV_DIR := $(abspath $(WORK_DIR)/build-env/)
+CMDLINE := $(project_name) console=tty0
 TMPFILE := /tmp/$(project_name)
 include kconfig.mk
 
+ifeq ($(BUILDENV),1)
 INITFS_DIR := /initfs/$(TARGET)/
 PACKAGE_DIR := /packages/$(TARGET)/
-KERNEL_DIR := /kernel
+KERNEL_DIR := /kernel/
+endif
+ifneq ($(BUILDENV),1)
+INITFS_DIR := $(WORK_DIR)/initfs/$(TARGET)/
+PACKAGE_DIR := $(WORK_DIR)/packages/$(TARGET)/
+KERNEL_DIR := $(WORK_DIR)/kernel/
+endif
+
 KERNEL_EXISTS := $(shell test -d $(KERNEL_DIR) && echo 1 || echo 0)
 
-INITFS_CPIO := $(PROJECT_DIR)/build/ramfs/$(project_name).$(TARGET).cpio
+INITFS_CPIO := $(WORK_DIR)/ramfs/$(project_name).$(TARGET).cpio
 INITFS_CPIOZ := $(INITFS_CPIO).xz
-KPART := $(project_name).$(TARGET).kpart
-IMG := $(project_name).$(TARGET).bin
-BZIMAGE := $(PROJECT_DIR)/build/kernel/$(project_name).$(TARGET).bzImage
+KPART := $(WORK_DIR)/$(project_name).$(TARGET).kpart
+IMG := $(WORK_DIR)/$(project_name).$(TARGET).bin
+BZIMAGE := $(WORK_DIR)/kernel/$(project_name).$(TARGET).bzImage
 
 ifeq ($(VERBOSE),1)
-  CMDLINE="$(CMDLINE) loglevel=9 console=ttyS0,115200"
+  CMDLINE := "$(CMDLINE) loglevel=9 console=ttyS0,115200"
 endif
+
+ifeq ($(TARGET),x86_64)
+	CMDLINE := "kern_guid=%U $(CMDLINE)"
+endif
+
+EXEC := TMPFILE=$(TMPFILE) RECOVERY=$(RECOVERY) VERBOSE=$(VERBOSE) PROJECT_DIR=$(PROJECT_DIR) $(SHELL)
 
 .PHONY: usage arm64 x86_64 aarch64 config download-build-env build-inside-buildenv internal_buildenv cleanup-all cleanup-buildenv fullclean
 
 usage:
-	@echo "usage: make [x86_64|arm64]"
-	@echo "(aarch64 == arm64)"
+	@echo "usage: make [x86_64|aarch64]"
 
 # Aarch64 is the same as Arm64.
 aarch64: arm64
@@ -114,7 +127,7 @@ endif
 	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) olddefconfig
 	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR)
 ifeq ($(TARGET),aarch64)
-	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) dtbs_install INSTALL_DTBS_PATH=$(PROJECT_DIR)/build/dtbs/
+	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) dtbs_install INSTALL_DTBS_PATH=$(WORK_DIR)/dtbs/
 	$(Q)$(COPY) $(KERNEL_DIR)/arch/$(KERNEL_TARGET)/boot/Image.gz $(BZIMAGE)
 endif
 ifeq ($(TARGET),x86_64)
@@ -134,4 +147,28 @@ $(INITFS_CPIO):
 $(INITFS_CPIOZ): $(INITFS_CPIO)
 	$(Q)$(XZ) -kf -9 --check=crc32 $(INITFS_CPIO)
 	
-internal_buildenv: $(INITFS_CPIOZ) $(BZIMAGE)
+$(KPART): $(BZIMAGE)
+	$(Q)echo "  KPART      $(KPART)"
+	$(Q)echo $(CMDLINE) >> $(TMPFILE)
+ifeq ($(TARGET),x86_64)
+	$(Q)$(FUTILITY) vbutil_kernel --pack $(KPART) --signprivate $(DATA_KEY) --keyblock $(KEYBLOCK) --config $(TMPFILE) --bootloader $(TMPFILE) --vmlinuz $(BZIMAGE) --version 1 --arch $(KERNEL_TARGET)
+endif
+ifeq ($(TARGET),aarch64)
+ifeq ($(RECOVERY),1)
+	$(Q)echo "|-!-| Building aarch64 images with recovery keys does not work due to a depthchargectl bug. Please resign using make_dev_ssd.sh and --recovery_key |-!-|"
+endif
+	$(Q)apk add depthcharge-tools
+	$(Q)$(DEPTHCHARGECTL) build \
+			--board arm64-generic \
+			--kernel $(BZIMAGE) \
+			--fdtdir $(WORK_DIR)/dtbs \
+			--root none \
+			--kernel-cmdline $(CMDLINE) \
+			--vboot-keyblock $(KEYBLOCK) \
+			--vboot-private-key $(DATA_KEY) \
+			--output $(KPART)
+endif
+	$(Q)$(MKDIR) -p $(OUTDIR)
+	$(Q)$(COPY) $(KPART) $(OUTDIR)
+
+internal_buildenv: $(INITFS_CPIOZ) $(BZIMAGE) $(KPART)

@@ -11,7 +11,7 @@ else
 Q := @
 endif
 
-ifeq ($(TARGET),arm64)
+ifeq ($(TARGET),aarch64)
 ARCH := aarch64
 else ifeq ($(TARGET),x86_64)
 ARCH := x86_64
@@ -72,3 +72,5 @@ CHOWN ?= chown
 XZ ?= xz
 GIT ?= git
 FIND ?= find
+FUTILITY ?= futility
+DEPTHCHARGECTL ?= depthchargectl
