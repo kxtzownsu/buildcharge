@@ -5,7 +5,6 @@
 ::sysinit:/sbin/mdev -s
 ::sysinit:/sbin/mdev -d
 
-ttyS0::respawn:/bin/sh -c 'stty -F /dev/ttyS0 115200; exec /bin/sh </dev/ttyS0 >/dev/ttyS0 2>&1' 
 ::respawn:/bin/sh
 
 ::shutdown:/bin/umount -a -r
