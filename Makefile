@@ -124,10 +124,10 @@ endif
 	$(Q)apk add elfutils-dev bc ncurses-dev mpfr-dev gmp-dev mpc1-dev
 	$(Q)$(FIND) $(PROJECT_DIR)/patches/kernel/ -type f -print0 | xargs -0 -n 1 patch -fud $(KERNEL_DIR) -p1
 	$(Q)$(COPY) $(PROJECT_DIR)/configs/kernel/config.$(TARGET) $(KERNEL_DIR)/.config
-	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) olddefconfig
-	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR)
+	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) O=build_$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) olddefconfig
+	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) O=build_$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR)
 ifeq ($(TARGET),aarch64)
-	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) dtbs_install INSTALL_DTBS_PATH=$(WORK_DIR)/dtbs/
+	$(Q)CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KERNEL_TARGET) O=build_$(KERNEL_TARGET) $(MAKE) -C $(KERNEL_DIR) dtbs_install INSTALL_DTBS_PATH=$(WORK_DIR)/dtbs/
 	$(Q)$(COPY) $(KERNEL_DIR)/arch/$(KERNEL_TARGET)/boot/Image.gz $(BZIMAGE)
 endif
 ifeq ($(TARGET),x86_64)
@@ -151,6 +151,7 @@ $(KPART): $(BZIMAGE)
 	$(Q)echo "  KPART      $(KPART)"
 	$(Q)echo $(CMDLINE) >> $(TMPFILE)
 ifeq ($(TARGET),x86_64)
+	$(Q)apk add vboot-utils
 	$(Q)$(FUTILITY) vbutil_kernel --pack $(KPART) --signprivate $(DATA_KEY) --keyblock $(KEYBLOCK) --config $(TMPFILE) --bootloader $(TMPFILE) --vmlinuz $(BZIMAGE) --version 1 --arch $(KERNEL_TARGET)
 endif
 ifeq ($(TARGET),aarch64)
