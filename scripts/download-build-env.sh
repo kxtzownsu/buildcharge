@@ -5,6 +5,8 @@ source "${SCRIPT_DIR}"/lib/common.sh
 
 REPO_URL="https://github.com/kxtzownsu/build-env"
 ENV_OS="Alpine"
+WGET_FLAGS="-q --show-progress"
+[[ "$SILENT" == "1" ]] && WGET_FLAGS="-q"
 
 ENV_DIR="$1"
 ENV_ARCH="$2"
@@ -18,7 +20,7 @@ DOWNLOAD_URL="${REPO_URL}/releases/download/${ENV_OS,,}-${ENV_ARCH}-latest/${ENV
 TARBALL="${ENV_DIR}/os.tgz"
 
 log "WGET" "${ENV_OS}.tgz"
-wget -q --show-progress -O "$TARBALL" "$DOWNLOAD_URL" || error 1 "failed to download build environment"
+wget ${WGET_FLAGS} -O "$TARBALL" "$DOWNLOAD_URL" || error 1 "failed to download build environment"
 
 log "EXTRACT" "${ENV_OS}.tgz"
 if [[ "$VERBOSE" == "1" ]]; then

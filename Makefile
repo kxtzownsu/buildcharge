@@ -11,6 +11,11 @@ clean-aarch64: TARGET := aarch64
 clean-x86_64: TARGET := x86_64
 internal_buildenv: BUILDENV := 1 
 
+# github action-specific things
+ifeq ($(ACTION),1)
+	SILENT := 1
+endif
+
 ifeq ($(TARGET),aarch64)
   KERNEL_TARGET := arm64
 else ifeq ($(TARGET),x86_64)
@@ -56,7 +61,7 @@ $(WORK_DIR) $(OUTDIR) $(BUILDENV_DIR):
 download-build-env: $(BUILDENV_DIR)
 ifeq ("$(wildcard $(BUILDENV_DIR)/.hello-world)","")
 	@echo "  DOWNLOAD  build-env for $(HOST_ARCH)"
-	$(Q)$(EXEC) scripts/download-build-env.sh $(BUILDENV_DIR) $(HOST_ARCH)
+	$(Q)SILENT=$(SILENT) $(EXEC) scripts/download-build-env.sh $(BUILDENV_DIR) $(HOST_ARCH)
 else
 	@echo "  BUILDENV  (cached)"
 endif
