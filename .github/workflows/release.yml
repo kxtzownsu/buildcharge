@@ -9,23 +9,7 @@ on:
         type: string
 
 jobs:
-  wait-for-build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [ x86_64, aarch64 ]
-    steps:
-      - name: Wait for build (${{ matrix.arch }}) to finish on main
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: main
-          check-name: build (${{ matrix.arch }})
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 15
-          allowed-conclusions: success
-
   release:
-    needs: wait-for-build
     runs-on: ubuntu-latest
     permissions:
       contents: write
