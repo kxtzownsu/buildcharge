@@ -9,13 +9,10 @@ on:
         type: string
 
 jobs:
-  wait-for-builds:
+  wait-for-build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        workflow: [ build-x86_64.yml, build-aarch64.yml ]
     steps:
-      - name: Wait for ${{ matrix.workflow }} to finish on main
+      - name: Wait for build.yml to finish on main
         uses: lewagon/wait-on-check-action@v1.3.4
         with:
           ref: main
@@ -25,7 +22,7 @@ jobs:
           allowed-conclusions: success
 
   release:
-    needs: wait-for-builds
+    needs: wait-for-build
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -35,17 +32,17 @@ jobs:
       - name: Download x86_64 artifact
         uses: dawidd6/action-download-artifact@v6
         with:
-          workflow: build-x86_64.yml
+          workflow: build.yml
           branch: main
-          name: kpart-x86_64
+          name: buildcharge-x86_64
           path: dist/x86_64
 
       - name: Download aarch64 artifact
         uses: dawidd6/action-download-artifact@v6
         with:
-          workflow: build-aarch64.yml
+          workflow: build.yml
           branch: main
-          name: kpart-aarch64
+          name: buildcharge-aarch64
           path: dist/aarch64
 
       - name: Package artifacts
