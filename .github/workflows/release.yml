@@ -37,6 +37,7 @@ jobs:
         with:
           workflow: build.yml
           branch: main
+          workflow_conclusion: success
           name: buildcharge-x86_64
           path: dist/x86_64
 
@@ -45,6 +46,7 @@ jobs:
         with:
           workflow: build.yml
           branch: main
+          workflow_conclusion: success
           name: buildcharge-aarch64
           path: dist/aarch64
 
