@@ -14,12 +14,38 @@ jobs:
         arch: [ x86_64, aarch64 ]
     steps:
       - uses: actions/checkout@v4
+
+      - name: Restore kernel cache
+        uses: dawidd6/action-download-artifact@v6
+        continue-on-error: true
+        with:
+          name: kernel_cache-${{ matrix.arch }}
+          workflow: build.yml
+          run_id: ${{ github.event.before }}
+          path: build/kernel
+          if_no_artifact_found: ignore
+
       - name: Add deps
         run: sudo apt update && sudo apt upgrade -y && sudo apt install -y python3-kconfiglib
+
+      - name: Clean
+        run: make clean-${{ matrix.arch }}
+
       - name: Build kpart
-        run: make ${{ matrix.arch }}
+        run: make ACTION=1 ${{ matrix.arch }}
+
       - name: Upload build files
         uses: actions/upload-artifact@v4
         with:
           name: buildcharge-${{ matrix.arch }}
           path: out
+
+      # We want to clean before uploading kernel dir so we don't accidentally upload the bzImage.
+      - name: Clean2
+        run: make clean-${{ matrix.arch }}
+
+      - name: Upload kernel cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel_cache-${{ matrix.arch }}
+          path: build/kernel
