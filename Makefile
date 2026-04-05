@@ -2,6 +2,7 @@ project_name = buildcharge
 USE_DEFAULT_CONFIG := 1
 KERNEL_REPO := https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
 KERNEL_BRANCH := v6.12.48
+KERNEL_VERSION := 1
 
 TARGET :=
 # ramfs relies on target as aarch64, not arm64, even though they're the same.
