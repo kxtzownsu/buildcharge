@@ -2,6 +2,7 @@ project_name = buildcharge
 USE_DEFAULT_CONFIG := 1
 KERNEL_REPO := https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
 KERNEL_BRANCH := v6.12.48
+KERNEL_VERSION := 1
 
 TARGET :=
 # ramfs relies on target as aarch64, not arm64, even though they're the same.
@@ -30,7 +31,7 @@ include scripts/make/kconfig.mk
 CMDLINE := $(project_name) console=tty0
 TMPFILE := /tmp/$(project_name)
 KERNEL_EXISTS := $(shell test -d $(KERNEL_DIR) && echo 1 || echo 0)
-EXEC := TMPFILE=$(TMPFILE) RECOVERY=$(RECOVERY) VERBOSE=$(VERBOSE) PROJECT_DIR=$(PROJECT_DIR) $(SHELL)
+EXEC := KERNEL_VERSION=$(KERNEL_VERSION) TMPFILE=$(TMPFILE) RECOVERY=$(RECOVERY) VERBOSE=$(VERBOSE) PROJECT_DIR=$(PROJECT_DIR) $(SHELL)
 
 ifeq ($(VERBOSE),1)
   CMDLINE := "$(CMDLINE) loglevel=9 console=ttyS0,115200"

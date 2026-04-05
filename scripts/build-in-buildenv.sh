@@ -14,6 +14,6 @@ require_arg "${ENV_DIR}" "build-env dir"
 require_arg "${PROJECT_DIR}" "project dir"
 require_arg "${TARGET}" "target"
 
-COMMAND_CONTENT="rm -rf ${TMPFILE} && make --no-print-directory internal_buildenv TARGET=${TARGET} VERBOSE=${VERBOSE} BUILDENV=1 TMPFILE=${TMPFILE}"
+COMMAND_CONTENT="rm -rf ${TMPFILE} && make --no-print-directory internal_buildenv KERNEL_VERSION=${KERNEL_VERSION} TARGET=${TARGET} VERBOSE=${VERBOSE} BUILDENV=1 TMPFILE=${TMPFILE}"
 
 run_in_build_env "${ENV_DIR}" "${PROJECT_DIR}" "${COMMAND_CONTENT}"

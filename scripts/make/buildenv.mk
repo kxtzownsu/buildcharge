@@ -37,7 +37,7 @@ $(KPART): $(BZIMAGE)
 	$(Q)echo $(CMDLINE) >> $(TMPFILE)
 ifeq ($(TARGET),x86_64)
 	$(Q)apk add vboot-utils
-	$(Q)$(FUTILITY) vbutil_kernel --pack $(KPART) --signprivate $(DATA_KEY) --keyblock $(KEYBLOCK) --config $(TMPFILE) --bootloader $(TMPFILE) --vmlinuz $(BZIMAGE) --version 1 --arch $(KERNEL_TARGET)
+	$(Q)$(FUTILITY) vbutil_kernel --pack $(KPART) --signprivate $(DATA_KEY) --keyblock $(KEYBLOCK) --config $(TMPFILE) --bootloader $(TMPFILE) --vmlinuz $(BZIMAGE) --version $(KERNEL_VERSION) --arch $(KERNEL_TARGET)
 endif
 ifeq ($(TARGET),aarch64)
 ifeq ($(RECOVERY),1)
@@ -53,6 +53,8 @@ endif
 			--vboot-keyblock $(KEYBLOCK) \
 			--vboot-private-key $(DATA_KEY) \
 			--output $(KPART)
+	$(Q)cp $(KPART) /tmp/$(KPART)
+	$(Q)$(FUTILITY) vbutil_kernel --oldblob /tmp/$(KPART) --repack $(KPART) --signprivate $(DATA_KEY) --version $(KERNEL_VERSION)
 endif
 	$(Q)$(MKDIR) -p $(OUTDIR)
 	$(Q)$(COPY) $(KPART) $(OUTDIR)
