@@ -53,7 +53,8 @@ endif
 			--vboot-keyblock $(KEYBLOCK) \
 			--vboot-private-key $(DATA_KEY) \
 			--output $(KPART)
-	$(Q)$(FUTILITY) vbutil_kernel --oldblob $(KPART) --repack $(KPART) --signprivate $(DATA_KEY) --version $(KERNEL_VERSION)
+	$(Q)cp $(KPART) /tmp/$(KPART)
+	$(Q)$(FUTILITY) vbutil_kernel --oldblob /tmp/$(KPART) --repack $(KPART) --signprivate $(DATA_KEY) --version $(KERNEL_VERSION)
 endif
 	$(Q)$(MKDIR) -p $(OUTDIR)
 	$(Q)$(COPY) $(KPART) $(OUTDIR)
