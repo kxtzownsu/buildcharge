@@ -51,7 +51,7 @@ jobs:
         run: make clean-${{ matrix.arch }}
 
       - name: Build kpart
-        run: make ACTION=1 ${{ matrix.arch }}
+        run: make ACTION=1 USE_ALL_CORES=1 ${{ matrix.arch }}
 
       - name: Upload build files
         uses: actions/upload-artifact@v4
