@@ -4,50 +4,66 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag (e.g. v1.2.3)'
+        description: 'Release tag base (e.g. v1.2.3)'
         required: true
         type: string
 
+env:
+  ARCHES: '["x86_64","aarch64"]'
+  PROJECTS: '["buildcharge"]'
+
 jobs:
-  release:
+  package:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    strategy:
+      matrix:
+        project: ${{ fromJSON(env.PROJECTS) }}
+        arch: ${{ fromJSON(env.ARCHES) }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download x86_64 artifact
+      - name: Download ${{ matrix.project }}-${{ matrix.arch }}
         uses: dawidd6/action-download-artifact@v6
         with:
           workflow: build.yml
           branch: main
           workflow_conclusion: success
-          name: buildcharge-x86_64
-          path: dist/x86_64
+          name: ${{ matrix.project }}-${{ matrix.arch }}
+          path: dist/${{ matrix.arch }}
 
-      - name: Download aarch64 artifact
-        uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: build.yml
-          branch: main
-          workflow_conclusion: success
-          name: buildcharge-aarch64
-          path: dist/aarch64
-
-      - name: Package artifacts
+      - name: Zip
         run: |
           cd dist
-          zip -r buildcharge-x86_64.zip x86_64/
-          zip -r buildcharge-aarch64.zip aarch64/
+          zip -r ${{ matrix.project }}-${{ matrix.arch }}.zip ${{ matrix.arch }}/
+
+      - name: Upload zipped artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.project }}-${{ matrix.arch }}
+          path: dist/${{ matrix.project }}-${{ matrix.arch }}.zip
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        project: ${{ fromJSON(env.PROJECTS) }}
+    steps:
+      - name: Download all ZIPs for this project
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-${{ matrix.project }}-*
+          path: dist
+          merge-multiple: true
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.tag }}
-          name: ${{ inputs.tag }}
+          tag_name: ${{ inputs.tag }}-${{ matrix.project }}
+          name: ${{ inputs.tag }} (${{ matrix.project }})
           draft: false
           prerelease: false
           generate_release_notes: true
-          files: |
-            dist/buildcharge-x86_64.zip
-            dist/buildcharge-aarch64.zip
+          files: dist/*.zip
