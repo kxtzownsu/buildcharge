@@ -25,3 +25,4 @@ CONFIG_KERNEL_RAMFS_BUNDLED=y
 # end of Kernel
 
 CONFIG_KPART=y
+CONFIG_PROJECT_NAME="buildcharge"

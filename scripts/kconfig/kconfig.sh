@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-project_name="buildcharge"
+project_name="" # this will be set by main() dont worry
 
 log() {
   local section="$1" message="$2"
@@ -11,24 +11,25 @@ log() {
 
 error() { local code=$1; shift; log "ERROR" "$*"; exit "$code"; }
 
-CMD="${1:-menuconfig}"; shift || true
-
-KCONFIG_FILE="" DOT_CONFIG="" MANIFEST_FILE="" CONFIG_SH_OUT="" CONFIG_MK_OUT=""
-
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --kconfig)    KCONFIG_FILE="$2";  shift 2 ;;
-    --dot-config) DOT_CONFIG="$2";    shift 2 ;;
-    --manifest)   MANIFEST_FILE="$2"; shift 2 ;;
-    --config-sh)  CONFIG_SH_OUT="$2"; shift 2 ;;
-    --config-mk)  CONFIG_MK_OUT="$2"; shift 2 ;;
-    *) error 1 "unknown argument: $1" ;;
-  esac
-done
-
 command -v menuconfig >/dev/null 2>&1 \
   || python3 -c "import kconfiglib" >/dev/null 2>&1 \
   || error 1 "kconfiglib is not installed"
+
+KCONFIG_FILE="" DOT_CONFIG="" MANIFEST_FILE="" CONFIG_SH_OUT="" CONFIG_MK_OUT=""
+
+parse_args(){
+  while [[ $# -gt 0 ]]; do
+   case "$1" in
+      --kconfig)    KCONFIG_FILE="$2";  shift 2 ;;
+      --dot-config) DOT_CONFIG="$2";    shift 2 ;;
+      --manifest)   MANIFEST_FILE="$2"; shift 2 ;;
+      --config-sh)  CONFIG_SH_OUT="$2"; shift 2 ;;
+      --config-mk)  CONFIG_MK_OUT="$2"; shift 2 ;;
+      --config-key) CONFIG_KEY="$2";    shift 2 ;;
+      *) error 1 "unknown argument: $1" ;;
+    esac
+  done
+}
 
 kcmd() {
   local name="$1"; shift
@@ -158,7 +159,7 @@ EOF
     echo "endif"
     echo "endmenu"
 
-cat <<'EOF'
+cat <<EOF
 menu "Kernel"
 
 config KERNEL
@@ -184,6 +185,12 @@ config KPART
   default y
   help
     Enables whether or not to produce a depthcharge kernel blob (kpart).
+
+config PROJECT_NAME
+  string "Project Name"
+  default "${project_name}"
+  help
+    The name of the project
 EOF
   } > "$out"
 
@@ -253,6 +260,7 @@ require() {
         MANIFEST_FILE) flag="--manifest" ;;
         CONFIG_SH_OUT) flag="--config-sh" ;;
         CONFIG_MK_OUT) flag="--config-mk" ;;
+        CONFIG_KEY)    flag="--config-key" ;;
         *)             flag="--${var,,}" ;;
       esac
       error 1 "$var is required for this command (pass $flag)"
@@ -260,46 +268,68 @@ require() {
   done
 }
 
-export KCONFIG_CONFIG="$DOT_CONFIG"
+get_dotconfig_val(){
+  local dotconfig_path="$1"
+  local key="$2"
 
-case "$CMD" in
-  menuconfig|guiconfig)
-    require KCONFIG_FILE DOT_CONFIG CONFIG_SH_OUT
-    [[ -f "$KCONFIG_FILE" ]] || { require MANIFEST_FILE; gen_kconfig "$MANIFEST_FILE" "$KCONFIG_FILE"; }
-    kcmd "$CMD" "$KCONFIG_FILE"
-    _gen_configs
-    ;;
+  cat "${dotconfig_path}" | grep "${key}=" | cut -d '=' -f 2
+}
 
-  check)
-    require KCONFIG_FILE DOT_CONFIG CONFIG_SH_OUT
-    [[ -f "$KCONFIG_FILE" ]] || { require MANIFEST_FILE; gen_kconfig "$MANIFEST_FILE" "$KCONFIG_FILE"; }
-    if [[ ! -f "$DOT_CONFIG" ]]; then
-      kcmd alldefconfig "$KCONFIG_FILE"
-    else
+main(){
+  CMD="${1:-menuconfig}"; shift || true
+  parse_args "$@"
+  
+  if [ -z "${DOT_CONFIG}" ]; then
+    project_name="Project"
+  else
+    project_name="$(get_dotconfig_val "${DOT_CONFIG}" "CONFIG_PROJECT_NAME" | tr -d '"')"
+  fi
+
+  case "$CMD" in
+    menuconfig|guiconfig)
+      require KCONFIG_FILE DOT_CONFIG CONFIG_SH_OUT
+      [[ -f "$KCONFIG_FILE" ]] || { require MANIFEST_FILE; gen_kconfig "$MANIFEST_FILE" "$KCONFIG_FILE"; }
+      kcmd "$CMD" "$KCONFIG_FILE"
+      _gen_configs
+      ;;
+
+    check)
+      require KCONFIG_FILE DOT_CONFIG CONFIG_SH_OUT
+      [[ -f "$KCONFIG_FILE" ]] || { require MANIFEST_FILE; gen_kconfig "$MANIFEST_FILE" "$KCONFIG_FILE"; }
+      if [[ ! -f "$DOT_CONFIG" ]]; then
+        kcmd alldefconfig "$KCONFIG_FILE"
+      else
+        kcmd olddefconfig "$KCONFIG_FILE"
+      fi
+      _gen_configs
+      ;;
+
+    olddefconfig)
+      require KCONFIG_FILE DOT_CONFIG CONFIG_SH_OUT
       kcmd olddefconfig "$KCONFIG_FILE"
-    fi
-    _gen_configs
-    ;;
+      _gen_configs
+      ;;
 
-  olddefconfig)
-    require KCONFIG_FILE DOT_CONFIG CONFIG_SH_OUT
-    kcmd olddefconfig "$KCONFIG_FILE"
-    _gen_configs
-    ;;
+    gen-kconfig)
+      require MANIFEST_FILE KCONFIG_FILE
+      gen_kconfig "$MANIFEST_FILE" "$KCONFIG_FILE"
+      ;;
 
-  gen-kconfig)
-    require MANIFEST_FILE KCONFIG_FILE
-    gen_kconfig "$MANIFEST_FILE" "$KCONFIG_FILE"
-    ;;
+    gen-config)
+      require DOT_CONFIG
+      [[ -n "$CONFIG_SH_OUT" || -n "$CONFIG_MK_OUT" ]] \
+        || error 1 "at least one of CONFIG_SH_OUT or CONFIG_MK_OUT must be provided"
+      _gen_configs
+      ;;
+    
+    get-dotconfig-val)
+      require DOT_CONFIG CONFIG_KEY
+      get_dotconfig_val "${DOT_CONFIG}" "${CONFIG_KEY}"
+      ;;
+    *)
+      error 1 "unknown command: $CMD"
+      ;;
+  esac
+}
 
-  gen-config)
-    require DOT_CONFIG
-    [[ -n "$CONFIG_SH_OUT" || -n "$CONFIG_MK_OUT" ]] \
-      || error 1 "at least one of CONFIG_SH_OUT or CONFIG_MK_OUT must be provided"
-    _gen_configs
-    ;;
-
-  *)
-    error 1 "unknown command: $CMD"
-    ;;
-esac
+main "$@"

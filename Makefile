@@ -1,4 +1,4 @@
-project_name = buildcharge
+project_name := buildcharge # this is just the default to prevent errors.
 USE_DEFAULT_CONFIG := 1
 KERNEL_REPO := https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git
 KERNEL_BRANCH := v6.12.48
@@ -24,9 +24,29 @@ else ifeq ($(TARGET),x86_64)
 endif
 
 include scripts/make/variables.mk
+include scripts/make/kconfig.mk
+
+ifeq ($(wildcard $(DOT_CONFIG)),)
+# this is the same logic thats in the 'config' target,
+# keep them as identical as possible
+	ifneq ($(PROJECT),)
+		$(Q)$(COPY) $(PROJECT_DIR)/configs/projects/$(PROJECT)/default.$(TARGET) $(DOT_CONFIG)
+	else ifeq ($(USE_DEFAULT_CONFIG),1)
+		$(Q)$(COPY) $(PROJECT_DIR)/configs/default.$(TARGET) $(DOT_CONFIG)
+	else
+		$(KCONFIG_SCRIPT) check $(KCONFIG_FLAGS)
+	endif
+endif
+
+_project_name_from_config := $(shell $(KCONFIG_SCRIPT) get-dotconfig-val --dot-config $(DOT_CONFIG) --config-key CONFIG_PROJECT_NAME | tr -d '"')
+ifeq ($(_project_name_from_config),)
+  $(error CONFIG_PROJECT_NAME is empty or missing in $(DOT_CONFIG))
+endif
+project_name := $(_project_name_from_config)
+
+include scripts/make/variables.mk # re-include now that we have the proper project_name
 include scripts/make/toolchain.mk
 include scripts/make/signing.mk
-include scripts/make/kconfig.mk
 
 CMDLINE := $(project_name) console=tty0
 TMPFILE := /tmp/$(project_name)
@@ -49,8 +69,8 @@ usage:
 # Arm64 is the same as Aarch64.
 arm64: aarch64
 
-x86_64: build-inside-buildenv
-aarch64: build-inside-buildenv
+x86_64: config build-inside-buildenv
+aarch64: config build-inside-buildenv
 
 $(WORK_DIR) $(OUTDIR) $(BUILDENV_DIR):
 	$(Q)$(MKDIR) -p $@
