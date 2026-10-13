@@ -8,17 +8,26 @@ on:
         required: true
         type: string
 
-env:
-  ARCHES: '["x86_64","aarch64"]'
-  PROJECTS: '["buildcharge"]'
-
 jobs:
+  # we do this because both `package` & `release` use these vars, so it needs to be global.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.set.outputs.projects }}
+      arches: ${{ steps.set.outputs.arches }}
+    steps:
+      - id: set
+        run: |
+          echo 'projects=["buildcharge"]' >> "$GITHUB_OUTPUT"
+          echo 'arches=["x86_64","aarch64"]' >> "$GITHUB_OUTPUT"
+
   package:
+    needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project: ${{ fromJSON(env.PROJECTS) }}
-        arch: ${{ fromJSON(env.ARCHES) }}
+        project: ${{ fromJSON(needs.setup.outputs.projects) }}
+        arch: ${{ fromJSON(needs.setup.outputs.arches) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,13 +52,13 @@ jobs:
           path: dist/${{ matrix.project }}-${{ matrix.arch }}.zip
 
   release:
-    needs: package
+    needs: [setup, package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     strategy:
       matrix:
-        project: ${{ fromJSON(env.PROJECTS) }}
+        project: ${{ fromJSON(needs.setup.outputs.projects) }}
     steps:
       - name: Download all ZIPs for this project
         uses: actions/download-artifact@v4
