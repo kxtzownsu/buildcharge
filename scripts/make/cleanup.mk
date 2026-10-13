@@ -7,7 +7,7 @@ cleanup-all:
 	$(Q)$(SUDO) $(EXEC) scripts/cleanup-orphaned-mounts.sh $(project_name)
 
 clean:
-	@echo "The typical 'make clean' does not work with buildcharge."
+	@echo "The typical 'make clean' does not work with $(project_name)."
 	@echo "You must use 'make clean-[arch], for example: make clean-x86_64 or make clean-aarch64"
 
 clean-arm64: clean-aarch64
