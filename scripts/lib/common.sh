@@ -1,5 +1,21 @@
-project_name="buildcharge"
+if [[ -n "${PROJECT_NAME:-}" ]]; then
+  project_name="${PROJECT_NAME}"
+elif [[ -n "${CONFIG_PROJECT_NAME:-}" ]]; then
+  project_name="${CONFIG_PROJECT_NAME}"
+else
+  _common_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _cfg="${PROJECT_DIR:-${_common_dir}/../..}/scripts/lib/generated/config.sh"
+  if [[ -f "$_cfg" ]]; then
+    project_name="$(grep -E '^CONFIG_PROJECT_NAME=' "$_cfg" 2>/dev/null \
+                    | head -1 | cut -d= -f2- | tr -d '"')"
+  fi
+  project_name="${project_name:-buildcharge}"
+fi
+unset _common_dir _cfg
+
 env_command_file="/tmp/build_command"
+
+project_dir="/project/${project_name}"
 
 log(){
   section="$1"
@@ -48,7 +64,7 @@ BUILD_ENV_MOUNTPOINTS=(
 
 mount_build_env(){
   local env_dir="$1"
-  local project_dir="$2"
+  local host_project_dir="$2"
 
   require_arg "$env_dir" "env_dir"
 
@@ -56,9 +72,9 @@ mount_build_env(){
     mount --bind "$mountpoint" "${env_dir}/${mountpoint}" 2>/dev/null || true
   done
 
-  if [[ -n "$project_dir" ]]; then
-    mkdir -p "${env_dir}/${project_name}"
-    mount --bind "$project_dir" "${env_dir}/${project_name}"
+  if [[ -n "$host_project_dir" ]]; then
+    mkdir -p "${env_dir}/${project_dir}"
+    mount --bind "$host_project_dir" "${env_dir}/${project_dir}"
   fi
 }
 
@@ -67,7 +83,7 @@ unmount_build_env(){
 
   require_arg "$env_dir" "env_dir"
 
-  umount "${env_dir}/${project_name}" 2>/dev/null || umount -l "${env_dir}/${project_name}" 2>/dev/null || true
+  umount "${env_dir}/${project_dir}" 2>/dev/null || umount -l "${env_dir}/${project_dir}" 2>/dev/null || true
 
   for ((i=${#BUILD_ENV_MOUNTPOINTS[@]}-1; i>=0; i--)); do
     umount "${env_dir}/${BUILD_ENV_MOUNTPOINTS[i]}" 2>/dev/null || umount -l "${env_dir}/${BUILD_ENV_MOUNTPOINTS[i]}" 2>/dev/null || true
@@ -90,7 +106,7 @@ source ~/.profile 2>/dev/null || true
 source /etc/bash/bashrc 2>/dev/null || true
 source /etc/bash/bash_completion.sh 2>/dev/null || true
 
-cd /${project_name}
+cd ${project_dir}
 
 $command_content
 EOF
@@ -118,10 +134,11 @@ exec_in_chroot(){
 
 run_in_build_env(){
   local env_dir="$1"
-  local project_dir="$2"
+  local host_project_dir="$2"
   local command_content="$3"
 
   require_arg "$env_dir" "env_dir"
+  require_arg "$host_project_dir" "host_project_dir"
   require_arg "$command_content" "command_content"
 
   local _mounted=0
@@ -136,7 +153,7 @@ run_in_build_env(){
 
   trap _run_in_build_env_cleanup EXIT INT TERM
 
-  mount_build_env "$env_dir" "$project_dir"
+  mount_build_env "$env_dir" "$host_project_dir"
   _mounted=1
 
   local command_file

@@ -9,11 +9,13 @@ log() {
   echo "  ${section^^}  ${message}"
 }
 
-error() { local code=$1; shift; log "ERROR" "$*"; exit "$code"; }
+error() { local code=$1; shift; log "ERROR" "$*" >&2; exit "$code"; }
 
-command -v menuconfig >/dev/null 2>&1 \
-  || python3 -c "import kconfiglib" >/dev/null 2>&1 \
-  || error 1 "kconfiglib is not installed"
+require_kconfiglib() {
+  command -v menuconfig >/dev/null 2>&1 \
+    || python3 -c "import kconfiglib" >/dev/null 2>&1 \
+    || error 1 "kconfiglib is not installed"
+}
 
 KCONFIG_FILE="" DOT_CONFIG="" MANIFEST_FILE="" CONFIG_SH_OUT="" CONFIG_MK_OUT=""
 
@@ -33,6 +35,7 @@ parse_args(){
 
 kcmd() {
   local name="$1"; shift
+  require_kconfiglib
   if command -v "$name" >/dev/null 2>&1; then
     "$name" "$@"
   else

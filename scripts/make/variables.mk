@@ -6,9 +6,9 @@ OUTDIR := $(abspath $(PROJECT_DIR)/out/)
 BUILDENV_DIR := $(abspath $(WORK_DIR)/build-env/)
 KERNEL_BUILD_DIR := $(WORK_DIR)/kernel/$(TARGET)/
 ifeq ($(BUILDENV),1)
-INITFS_DIR := /initfs/$(TARGET)/
-PACKAGE_DIR := /packages/$(TARGET)/
-KERNEL_DIR := /kernel/
+INITFS_DIR := /initfs/$(project_name)/$(TARGET)/
+PACKAGE_DIR := /packages/$(project_name)/$(TARGET)/
+KERNEL_DIR := /kernel/$(project_name)/
 endif
 ifneq ($(BUILDENV),1)
 INITFS_DIR := $(WORK_DIR)/initfs/$(TARGET)/

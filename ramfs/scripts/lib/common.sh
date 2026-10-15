@@ -1,4 +1,19 @@
-project_name="buildcharge"
+if [[ -n "${PROJECT_NAME:-}" ]]; then
+  project_name="${PROJECT_NAME}"
+elif [[ -n "${CONFIG_PROJECT_NAME:-}" ]]; then
+  project_name="${CONFIG_PROJECT_NAME}"
+else
+  _common_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _cfg="${PROJECT_DIR:-${_common_dir}/../..}/scripts/lib/generated/config.sh"
+  if [[ -f "$_cfg" ]]; then
+    project_name="$(grep -E '^CONFIG_PROJECT_NAME=' "$_cfg" 2>/dev/null \
+                    | head -1 | cut -d= -f2- | tr -d '"')"
+  fi
+  project_name="${project_name:-buildcharge}"
+fi
+unset _common_dir _cfg
+
+project_dir="/project/${project_name}"
 
 log(){
   section="$1"

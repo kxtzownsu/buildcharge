@@ -53,8 +53,8 @@ main() {
 
     ## config name schemes
     config_scheme_0=""
-    config_scheme_1="/${project_name}/configs/ramfs/${package_package_name}/config.${CONFIG_ARCH_SELECTION}"
-    config_scheme_2="/${project_name}/configs/ramfs/${package_package_name}/config.cross.$(uname -m)-${CONFIG_ARCH_SELECTION}"
+    config_scheme_1="/${project_dir}/configs/ramfs/${package_package_name}/config.${CONFIG_ARCH_SELECTION}"
+    config_scheme_2="/${project_dir}/configs/ramfs/${package_package_name}/config.cross.$(uname -m)-${CONFIG_ARCH_SELECTION}"
 
     case "${package_name}" in
       (*[!a-zA-Z0-9_-]*)
@@ -93,7 +93,7 @@ main() {
     
     # Should we apply patches?
     if [ ! -z "${package_patch_directory}" ]; then
-      patchdir="/${project_name}/patches/ramfs/${package_patch_directory}/"
+      patchdir="/${project_dir}/patches/ramfs/${package_patch_directory}/"
       if [ ! -d "${patchdir}" ]; then
         log "ERR" "patch dir for ${package_package_name} doesn't exist!"
         continue
