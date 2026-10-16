@@ -11,9 +11,9 @@ PACKAGE_DIR := /packages/$(project_name)/$(TARGET)/
 KERNEL_DIR := /kernel/$(project_name)/
 endif
 ifneq ($(BUILDENV),1)
-INITFS_DIR := $(WORK_DIR)/initfs/$(TARGET)/
-PACKAGE_DIR := $(WORK_DIR)/packages/$(TARGET)/
-KERNEL_DIR := $(WORK_DIR)/kernel/
+INITFS_DIR := $(WORK_DIR)/initfs/${project_name}/$(TARGET)/
+PACKAGE_DIR := $(WORK_DIR)/packages/${project_name}/$(TARGET)/
+KERNEL_DIR := $(WORK_DIR)/kernel/${project_name}/
 endif
 
 

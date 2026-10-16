@@ -67,7 +67,7 @@ init_manifest_vars() {
   MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY="$(jq -r .patch_directory <<<"$entry")"
   MANIFEST_VAR_PACKAGE_CONFIG_FILE="$(jq -r '.config_file // false' <<<"$entry")"
   MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY="$(jq -r .overlay_directory <<<"$entry")"
-  MANIFEST_VAR_INITFS_DIRECTORY="/initfs/${MANIFEST_VAR_TARGET_ARCHITECTURE}"
+  MANIFEST_VAR_INITFS_DIRECTORY="/initfs/${project_name}/${MANIFEST_VAR_TARGET_ARCHITECTURE}"
 }
 
 expand_manifest_vars() {
