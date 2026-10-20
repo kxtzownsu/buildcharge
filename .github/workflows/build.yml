@@ -11,7 +11,7 @@ on:
         default: 'PR test'
 
 jobs:
-    check:
+  check:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.msg.outputs.skip }}
