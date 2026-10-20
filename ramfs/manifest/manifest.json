@@ -1,0 +1,6 @@
+{
+  "//": "MANIFEST_DIR is just the directory that has manifest.json in it",
+  "_include": "$(MANIFEST_DIR)/dependencies/common.json",
+  "_include": "$(MANIFEST_DIR)/packages/common.json",
+  "_include": "$(MANIFEST_DIR)/packages/$(project_name)/common.json"
+}

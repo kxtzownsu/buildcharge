@@ -25,7 +25,7 @@ endif # if CONFIG_KERNEL=y
 $(INITFS_CPIO):
 	$(Q)$(MKDIR) -p "$(PACKAGE_DIR)"
 	$(Q)$(MKDIR) -p "$(PROJECT_DIR)/build/ramfs/" "$(PROJECT_DIR)/build/kernel/"
-	$(Q)$(EXEC) $(PROJECT_DIR)/ramfs/scripts/parse-manifest.sh "$(PROJECT_DIR)/ramfs/manifest.json" "$(TOOLCHAIN)-" "$(ARCH)" "$(PACKAGE_DIR)"
+	$(Q)$(EXEC) $(PROJECT_DIR)/ramfs/scripts/parse-manifest.sh "$(MANIFEST_JSON)" "$(TOOLCHAIN)-" "$(ARCH)" "$(PACKAGE_DIR)"
 	$(Q)$(EXEC) $(PROJECT_DIR)/ramfs/scripts/build-packages.sh "/tmp/manifest.json" "$(PACKAGE_DIR)"
 	$(Q)$(CHOWN) -R root:root $(INITFS_DIR)
 	$(Q)$(CHMOD) -R +x $(INITFS_DIR)/bin/

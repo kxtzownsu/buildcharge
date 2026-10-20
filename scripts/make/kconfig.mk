@@ -8,7 +8,7 @@ KCONFIG_FLAGS  := --kconfig $(KCONFIG_FILE) \
                   --dot-config $(DOT_CONFIG) \
                   --config-sh $(CONFIG_SH) \
 									--config-mk $(CONFIG_MK) \
-                  --manifest $(PROJECT_DIR)/ramfs/manifest.json
+                  --manifest $(MANIFEST_JSON)
 
 .PHONY: menuconfig guiconfig gen-kconfig gen-config olddefconfig config
 
@@ -28,7 +28,7 @@ else
 endif
 
 gen-kconfig: config
-	$(Q)$(KCONFIG_SCRIPT) gen-kconfig --manifest $(PROJECT_DIR)/ramfs/manifest.json --dot-config $(DOT_CONFIG) --kconfig $(KCONFIG_FILE)
+	$(Q)$(KCONFIG_SCRIPT) gen-kconfig --manifest $(MANIFEST_JSON) --dot-config $(DOT_CONFIG) --kconfig $(KCONFIG_FILE)
 
 gen-config: config
 	$(Q)$(KCONFIG_SCRIPT) gen-config --dot-config $(DOT_CONFIG) \
