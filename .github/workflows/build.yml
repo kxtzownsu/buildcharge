@@ -11,18 +11,20 @@ on:
         default: 'PR test'
 
 jobs:
-  check:
+    check:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.msg.outputs.skip }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check commit message
+      - name: Check skip conditions
         id: msg
         run: |
           MSG=$(git show -s --format=%B ${{ github.sha }})
-          echo "skip=$([[ "$MSG" == *'WORKFLOW=none'* ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          SKIP=false
+          [[ "$MSG" == *'WORKFLOW=none'* || -e .disableworkflow ]] && SKIP=true
+          echo "skip=$SKIP" >> "$GITHUB_OUTPUT"
 
   build:
     needs: check
