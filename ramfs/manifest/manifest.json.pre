@@ -1,0 +1,15 @@
+/*
+!! THIS IS NOT A VALID JSON FILE! THIS IS A PRE-PROCESSED FILE INTENDED TO BE USED
+BY THE BUILDCHARGE RAMFS PACKAGE BUILDER! DO NOT USE THIS FILE WITHOUT PASSING IT
+THROUGH THERE FIRST! !!
+*/
+
+/*
+NOTES:
+- MANIFEST_DIR is just the directory which has the manifest.json.pre file (aka this file)
+- This file still can use MANIFEST_VARs if needed, although they could be broken since
+  this isn't in a package.
+*/
+
+#include "${MANIFEST_DIR}/dependencies/common.json";
+#include "${MANIFEST_DIR}/packages/common.json";

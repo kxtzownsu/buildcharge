@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.json.pre": "jsonc"
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true
+}
