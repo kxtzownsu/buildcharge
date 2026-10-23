@@ -1,0 +1,30 @@
+{
+  "name": "libpng",
+  "id": "libpng",
+  "type": "dependency",
+  "author": "pnggroup",
+  "description": "LIBPNG: Portable Network Graphics support, official libpng repository",
+  "dependencies": [
+    "zlib"
+  ],
+  "repo": {
+    "url": "https://github.com/glennrp/libpng.git",
+    "branch": "v1.5.15"
+  },
+  "directory": "libpng",
+  "build_script": [
+    "CC=${MNFV_CROSS_COMPILATION_ABS_CC} \\",
+    "AR=${MNFV_CROSS_COMPILATION_ABS_AR} \\",
+    "RANLIB=${MNFV_CROSS_COMPILATION_ABS_RANLIB} \\",
+    "CPPFLAGS='-I${MNFV_INSTALL_PREFIX}/include' \\",
+    "LDFLAGS='-L${MNFV_INSTALL_PREFIX}/lib' \\",
+    "./configure \\",
+    "  --host=${MNFV_TARGET_ARCHITECTURE}-linux-musl \\",
+    "  --prefix=${MNFV_INSTALL_PREFIX} \\",
+    "  --enable-static --disable-shared --enable-arm-neon=off",
+    "make -j${MNFV_HOST_CORES}"
+  ],
+  "install_script": [
+    "make install"
+  ]
+}

@@ -3,179 +3,235 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}"/lib/common.sh
 [[ "${VERBOSE}" == 1 ]] && set -x
 
+# usage: build-packages.sh <expanded manifest.json (from parse-manifest.sh)> <package dir>
 MANIFEST_JSON="$1"
 PACKAGE_DIR="$2"
-PACKAGE_DIR="/${PACKAGE_DIR#/}"
 
 require_arg "${MANIFEST_JSON}" "manifest json"
 require_arg "${PACKAGE_DIR}" "package directory"
+PACKAGE_DIR="/${PACKAGE_DIR#/}"
+PACKAGE_DIR="${PACKAGE_DIR%/}"
 
 # PROJECT_DIR is passed to us by the Makefile
 source "${PROJECT_DIR}/scripts/lib/generated/config.sh"
 
+apply_patches() {
+  local name="$1" id_upper="$2" pkgdir="$3" patchdir="$4"
+  local patchFile patch_name marker_file
+
+  if [ ! -d "${patchdir}" ]; then
+    log "ERR" "patch dir for ${name} doesn't exist!"
+    log "ERR" "patchdir: ${patchdir}"
+    return 1
+  fi
+
+  for patchFile in "${patchdir}"/*; do
+    # patchdir is empty, skip it.
+    [ -e "${patchFile}" ] || continue
+
+    patch_name=$(basename "${patchFile}")
+    marker_file="${PACKAGE_DIR}/.marker/${id_upper}/patches/${patch_name}.applied"
+    mkdir -p "$(dirname "${marker_file}")" 2>/dev/null || true
+
+    if [ -f "${marker_file}" ]; then
+      log "INFO" "patch ${patch_name} is already applied"
+    else
+      log "INFO" "applying ${patch_name}"
+      if patch -p1 -N --batch --ignore-whitespace -d "${pkgdir}" < "${patchFile}"; then
+        touch "${marker_file}"
+      else
+        log "ERR" "failed to apply patch ${patch_name}"
+        return 1
+      fi
+    fi
+  done
+}
+
+# prints the config file to use for this package, or nothing for scheme 0
+config_file_for() {
+  local id_upper="$1" scheme="$2"
+  local dir="${project_dir}/configs/ramfs/${id_upper}"
+
+  case "${scheme}" in
+    0) ;;
+    1) echo "${dir}/config.${CONFIG_ARCH_SELECTION}" ;;
+    2) echo "${dir}/config.cross.$(uname -m)-${CONFIG_ARCH_SELECTION}" ;;
+    3)
+      if [ "${CONFIG_ARCH_SELECTION}" != "$(uname -m)" ]; then
+        echo "${dir}/config.cross.$(uname -m)-${CONFIG_ARCH_SELECTION}"
+      else
+        echo "${dir}/config.${CONFIG_ARCH_SELECTION}"
+      fi
+      ;;
+    *) log "ERR" "invalid config file scheme '${scheme}', assuming no config." >&2 ;;
+  esac
+}
+
+# REQUIRED_DEPS: space-separated list of dependency ids that must be built
+# (computed by compute_required_deps before the build loop).
+REQUIRED_DEPS=""
+
+# Returns 0 if this entry should be built:
+# - packages: only when CONFIG_PACKAGE_<ID>=y
+# - dependencies: only when they are required by at least one enabled package
+should_build() {
+  local entry="$1" id typ id_upper cfgvar
+  id="$(jq -r '.id' <<<"${entry}")"
+  typ="$(jq -r '.type' <<<"${entry}")"
+  id_upper="${id^^}"
+  id_upper="${id_upper//-/_}"
+
+  if [[ "${typ}" == "package" ]]; then
+    cfgvar="CONFIG_PACKAGE_${id_upper}"
+    [[ "${!cfgvar}" == "y" ]]
+    return $?
+  fi
+
+  # dependency: build only if listed in REQUIRED_DEPS
+  case " ${REQUIRED_DEPS} " in
+    *" ${id} "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+build_package() {
+  local entry="$1"
+  local id id_upper name repo_url repo_branch directory patches_bool config_scheme
+  local build_script install_script pkgdir cfg_file ans
+  local -a gitargs=()
+
+  should_build "${entry}" || return 0
+
+  id="$(jq -r '.id' <<<"${entry}")"
+  name="$(jq -r '.name' <<<"${entry}")"
+  repo_url="$(jq -r '.repo.url' <<<"${entry}")"
+  repo_branch="$(jq -r '.repo.branch' <<<"${entry}")"
+  directory="$(jq -r '.directory' <<<"${entry}")"
+  patches_bool="$(jq -r '.patches' <<<"${entry}")"
+  config_scheme="$(jq -r '.config_file_scheme' <<<"${entry}")"
+  build_script="$(jq -r '.build_script | join("\n")' <<<"${entry}")"
+  install_script="$(jq -r '.install_script | join("\n")' <<<"${entry}")"
+
+  id_upper="${id^^}"
+  id_upper="${id_upper//-/_}"
+  pkgdir="${PACKAGE_DIR}/${directory}"
+
+
+  mkdir -p "${PACKAGE_DIR}"
+  cd "${PACKAGE_DIR}" || return 1
+
+  if [ -d "${pkgdir}/.git" ]; then
+    log "GIT" "${name} (exists)"
+  else
+    log "GIT" "${name}"
+    [ -n "${repo_branch}" ] && gitargs+=(-b "${repo_branch}")
+    git clone "${repo_url}" "${gitargs[@]}" "${directory}" || {
+      log "ERR" "failed to clone ${name}"
+      return 1
+    }
+  fi
+
+  cd "${pkgdir}" || return 1
+
+  if [ "${patches_bool}" == "true" ]; then
+    apply_patches "${name}" "${id_upper}" "${pkgdir}" "${PROJECT_DIR}/patches/ramfs/${id}" || return 1
+  fi
+
+  cfg_file="$(config_file_for "${id_upper}" "${config_scheme}")"
+  if [ -n "${cfg_file}" ]; then
+    if [ ! -f "${cfg_file}" ]; then
+      log "ERR" "config file for ${name} doesn't exist!"
+      log "ERR" "cfg_file: ${cfg_file}"
+      log "ERR" "this could cause unexpected behavior."
+      read -rep "Do you want to continue? You may encounter errors. [y/N] " ans
+      if [ "${ans}" != "y" ] && [ "${ans}" != "Y" ]; then
+        log "INFO" "skipping ${name}"
+        return 0
+      fi
+    else
+      cp "${cfg_file}" "${pkgdir}/.config"
+    fi
+  fi
+
+  source ~/.bashrc 2>/dev/null || true
+
+  if [ -n "${build_script}" ]; then
+    log "BUILD" "${name}"
+    eval "${build_script}" || {
+      log "ERR" "build failed for ${name}"
+      return 1
+    }
+  fi
+
+  if [ -n "${install_script}" ]; then
+    log "INSTALL" "${name}"
+    eval "${install_script}" || {
+      log "ERR" "install failed for ${name}"
+      return 1
+    }
+  fi
+}
+
+# Walk the dependency graph of every enabled package and collect the set of
+# dependency ids that must be built. Expands transitively.
+compute_required_deps() {
+  local entry id typ id_upper cfgvar dep
+  local -A needed=()
+  local -a queue=()
+
+  # seed queue with direct deps of enabled packages
+  while IFS= read -r entry; do
+    id="$(jq -r '.id' <<<"${entry}")"
+    typ="$(jq -r '.type' <<<"${entry}")"
+    [[ "${typ}" == "package" ]] || continue
+    id_upper="${id^^}"
+    id_upper="${id_upper//-/_}"
+    cfgvar="CONFIG_PACKAGE_${id_upper}"
+    [[ "${!cfgvar}" == "y" ]] || continue
+    while IFS= read -r dep; do
+      [[ -z "${dep}" ]] && continue
+      if [[ -z "${needed[${dep}]+set}" ]]; then
+        needed["${dep}"]=1
+        queue+=("${dep}")
+      fi
+    done < <(jq -r '.dependencies[]?' <<<"${entry}")
+  done < <(jq -c '.[]' "${MANIFEST_JSON}")
+
+  # expand transitively (deps of deps)
+  while [[ ${#queue[@]} -gt 0 ]]; do
+    local cur="${queue[0]}"
+    queue=("${queue[@]:1}")
+    entry="$(jq -c --arg id "${cur}" '.[] | select(.id == $id)' "${MANIFEST_JSON}")"
+    [[ -n "${entry}" ]] || continue
+    while IFS= read -r dep; do
+      [[ -z "${dep}" ]] && continue
+      if [[ -z "${needed[${dep}]+set}" ]]; then
+        needed["${dep}"]=1
+        queue+=("${dep}")
+      fi
+    done < <(jq -r '.dependencies[]?' <<<"${entry}")
+  done
+
+  REQUIRED_DEPS=""
+  for id in "${!needed[@]}"; do
+    REQUIRED_DEPS="${REQUIRED_DEPS} ${id}"
+  done
+}
+
 main() {
+  local entry
+
   [[ "${CONFIG_PACKAGES}" != "y" ]] && echo "pkg not enabled" && exit 0
 
   echo "-- We're about to start building packages! If you want to quit now, press CTRL+C to cancel the build flow, otherwise Press Enter to Continue... --"
   read -r
 
-  jq -c '.[]' "${MANIFEST_JSON}" | while IFS= read -r package_json; do
-    # Used by builder? Yes
-    package_name=$(echo "${package_json}" | jq -r '.name')
-    # Used by builder? Yes
-    package_package_name=$(echo "${package_json}" | jq -r '.package_name')
-    # Used by builder? No
-    package_author=$(echo "${package_json}" | jq -r '.author')
-    # Used by builder? No
-    package_description=$(echo "${package_json}" | jq -r '.description')
-    # Used by builder? Yes
-    package_repo_url=$(echo "${package_json}" | jq -r '.repo_url')
-    # Used by builder? Yes
-    package_repo_branch=$(echo "${package_json}" | jq -r '.repo_branch')
-    # Used by builder? Yes
-    package_directory=$(echo "${package_json}" | jq -r '.directory')
-    # Used by builder? Yes
-    package_patch_directory=$(echo "${package_json}" | jq -r '.patch_directory')
-    # Used by builder? No
-    package_overlay_directory=$(echo "${package_json}" | jq -r '.overlay_directory')
-    # Used by builder? Yes
-    package_config_file=$(echo "${package_json}" | jq -r '.config_file // 0')
+  compute_required_deps
+  log "DEPS" "required: ${REQUIRED_DEPS:-none}"
 
-
-    # these are arrays, we need to handle them differently.
-    # Used by builder? Yes
-    package_dependencies=$(echo "${package_json}" | jq -r '.dependencies | join(" ")')
-    # Used by builder? Yes
-    package_build_cmd=$(echo "${package_json}" | jq -r '.build_cmd | join("\n")')
-    
-    pkgdir=""
-    gitargs=()
-
-    ## config name schemes
-    config_scheme_0=""
-    config_scheme_1="/${project_dir}/configs/ramfs/${package_package_name}/config.${CONFIG_ARCH_SELECTION}"
-    config_scheme_2="/${project_dir}/configs/ramfs/${package_package_name}/config.cross.$(uname -m)-${CONFIG_ARCH_SELECTION}"
-
-    case "${package_name}" in
-      (*[!a-zA-Z0-9_-]*)
-        echo "skipping package with invalid name. pass VERBOSE=1 to 'make' to see the full name."
-        continue
-        ;;
-    esac
-
-    # Is the package disabled?
-    eval "[ \"\$CONFIG_PACKAGE_${package_package_name}\" != \"y\" ]" && continue
-
-    log "GIT" "${package_name}"
-    mkdir -p "${PACKAGE_DIR}"
-    cd "${PACKAGE_DIR}"
-    
-    # There wasn't a repo url specified. That means this is 
-    # an invalid package entry, skip it.
-    [ -z "${package_repo_url}" ] && continue
-
-    if [ ! -z "${package_repo_branch}" ]; then
-      gitargs+=(-b "${package_repo_branch}")
-    fi
-
-    # This MUST be the last argument passed to git.
-    if [ ! -z "${package_directory}" ]; then
-      gitargs+=("${package_directory}")
-      pkgdir="${PACKAGE_DIR}/${package_directory}"
-    else
-      gitargs+=("${package_name}")
-      pkgdir="${PACKAGE_DIR}/${package_name}"
-    fi
-
-    git clone "${package_repo_url}" "${gitargs[@]}"
-
-    cd "${pkgdir}"
-    
-    # Should we apply patches?
-    if [ ! -z "${package_patch_directory}" ]; then
-      patchdir="/${project_dir}/patches/ramfs/${package_patch_directory}/"
-      if [ ! -d "${patchdir}" ]; then
-        log "ERR" "patch dir for ${package_package_name} doesn't exist!"
-        continue
-      fi
-      for patchFile in "${patchdir}"/*; do
-        # patchdir is empty, skip it.
-        [ -e "${patchFile}" ] || continue
-
-        patch_name=$(basename "${patchFile}")
-        marker_file="${PACKAGE_DIR}/.marker/${package_package_name}/patches/${patch_name}.applied"
-        mkdir -p "$(dirname "${marker_file}")" 2>/dev/null || true # just in case
-        
-        if [ -f "${marker_file}" ]; then
-          log "INFO" "patch ${patch_name} is already applied"
-        else
-          log "INFO" "applying ${patch_name}"
-          if patch -p1 -N --batch --ignore-whitespace -d "${pkgdir}" < "${patchFile}"; then
-            touch "${marker_file}"
-          else
-            log "ERR" "failed to apply patch ${patch_name}"
-            exit 1
-          fi
-        fi
-      done
-    fi
-
-    # Do we have a config file?
-    if [ "${package_config_file}" != "0" ]; then
-      cfg_file="${config_scheme_0}"
-      case "${package_config_file}" in
-        0)
-          log "WARN" "config file disabled, how did we get here?"
-          ;;
-        1)
-          cfg_file="${config_scheme_1}"
-          ;;
-        2)
-          cfg_file="${config_scheme_2}"
-          ;;
-        3)
-          if [ "${CONFIG_ARCH_SELECTION}" != "$(uname -m)" ]; then
-            cfg_file="${config_scheme_2}"
-          elif [ "${CONFIG_ARCH_SELECTION}" == "$(uname -m)" ]; then
-            cfg_file="${config_scheme_1}"
-          else
-            # what??? how did we get here..
-            log "ERR" "something didn't return correctly!!"
-            log "ERR" "This is a bug! Please report it on the ${project_name} GitHub."
-            log "ERR" "CONFIG_ARCH_SELECTION: ${CONFIG_ARCH_SELECTION}"
-            log "ERR" "HOST_ARCH: $(uname -m)"
-            exit 1
-          fi
-          ;;
-        *)
-          log "ERR" "invalid config file entry, assuming no config."
-          ;;
-      esac
-
-      if [ ! -z "${cfg_file}" ]; then
-        if [ ! -f "${cfg_file}" ]; then
-          log "ERR" "config file for ${package_package_name} doesn't exist!"
-          log "ERR" "cfg_file: ${cfg_file}"
-          log "ERR" "${CONFIG_ARCH_SELECTION} & $(uname -m) & ${config_scheme_0} & ${config_scheme_1} & ${config_scheme_2} & ${cfg_file} & ${package_config_file}"
-          log "ERR" "this could cause unexpected behavior."
-          read -rep "Do you want to continue? You may encounter errors. [y/N] " ans
-          if [ "${ans}" != "y" ] && [ "${ans}" != "Y" ]; then
-            log "INFO" "skipping ${package_package_name}"
-            continue
-          fi
-        fi
-      
-        cp "${cfg_file}" "${PACKAGE_DIR}/${package_directory}/.config"
-      fi
-    fi
-
-
-    # Everything should be good to go, we can
-    # finally start building the package.
-    cd "${PACKAGE_DIR}/${package_directory}"
-    source ~/.bashrc # we need PATH..
-    eval "${package_build_cmd}"
-  done
+  while IFS= read -r -u 3 entry; do
+    build_package "${entry}" || exit 1
+  done 3< <(jq -c '.[]' "${MANIFEST_JSON}")
 }
 
 main "$@"

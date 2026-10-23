@@ -1,0 +1,25 @@
+{
+  "name": "zlib",
+  "id": "zlib",
+  "type": "dependency",
+  "author": "zlib",
+  "description": "A massively spiffy yet delicately unobtrusive compression library.",
+  "dependencies": [],
+  "repo": {
+    "url": "https://github.com/madler/zlib.git",
+    "branch": "v1.3.1"
+  },
+  "directory": "zlib",
+  "build_script": [
+    "cmake -B build -S . \\",
+    "  -DBUILD_SHARED_LIBS=off \\",
+    "  -DCMAKE_C_COMPILER=${MNFV_CROSS_COMPILATION_ABS_CC} \\",
+    "  -DCMAKE_AR=${MNFV_CROSS_COMPILATION_ABS_AR} \\",
+    "  -DCMAKE_RANLIB=${MNFV_CROSS_COMPILATION_ABS_RANLIB} \\",
+    "  -DCMAKE_INSTALL_PREFIX=${MNFV_INSTALL_PREFIX}",
+    "cmake --build build"
+  ],
+  "install_script": [
+    "cmake --install build"
+  ]
+}

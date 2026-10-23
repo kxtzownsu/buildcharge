@@ -1,0 +1,29 @@
+{
+  "name": "libdrm",
+  "id": "libdrm",
+  "type": "dependency",
+  "author": "mesa",
+  "description": "libdrm Direct Rendering Manager library and headers",
+  "dependencies": [
+    "libpciaccess",
+    "libxml2"
+  ],
+  "repo": {
+    "url": "https://gitlab.freedesktop.org/mesa/drm.git",
+    "branch": "libdrm-2.4.131"
+  },
+  "directory": "libdrm",
+  "patches": true,
+  "build_script": [
+    "ln -s /usr/include/libdrm /usr/include/drm",
+    "meson setup build \\",
+    "  --default-library=static \\",
+    "  --prefix=${MNFV_INSTALL_PREFIX} \\",
+    "  --cross-file=${MNFV_CROSS_COMPILATION_CROSS_FILE} \\",
+    "  -Dudev=false -Dtests=false -Dinstall-test-programs=false",
+    "meson compile -C build"
+  ],
+  "install_script": [
+    "meson install -C build"
+  ]
+}

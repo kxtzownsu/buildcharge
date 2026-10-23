@@ -1,0 +1,39 @@
+{
+  "name": "busybox",
+  "id": "busybox",
+  "type": "package",
+  "author": "busybox",
+  "description": "",
+  "dependencies": [],
+  "repo": {
+    "url": "https://github.com/mirror/busybox.git",
+    "branch": "1_36_stable"
+  },
+  "directory": "busybox",
+  "//": "NOTE: overlay_directory has been deprecated! use ${MNFV_PKG_OVERLAY_DIRECTORY} if needed.",
+  "//": "Config file schemes: ",
+  "//": "0: No config",
+  "//": "1: Basic architecture-specific config file (config.{CONFIG_ARCH_SELECTION})",
+  "//": "2: Cross-compilation config file (config.cross.{HOST_ARCH}.{CONFIG_ARCH_SELECTION})",
+  "//": "3: Auto select between schemes 1 & 2 (If CONFIG_ARCH_SELECTION != HOST_ARCH, use scheme 2. If CONFIG_ARCH_SELECTION == HOST_ARCH, use scheme 1.",
+  "config_file_scheme": 3,
+  "env": {
+    "MAKE_VARS": "CROSS_COMPILE=${MNFV_CROSS_COMPILATION_DASH} ARCH=${MNFV_TARGET_ARCHITECTURE}"
+  },
+  "build_script": [
+    "make ${MNFV_ENV_MAKE_VARS} oldconfig",
+    "make ${MNFV_ENV_MAKE_VARS} -j${MNFV_HOST_CORES} EXTRA_CFLAGS='-fno-PIE -fno-PIC' EXTRA_LDFLAGS='-no-pie -static'"
+  ],
+  "install_script": [
+    "make CONFIG_PREFIX=${MNFV_INITFS_DIRECTORY} ${MNFV_ENV_MAKE_VARS} install",
+    "ln -sf /sbin/init ${MNFV_INITFS_DIRECTORY}/init",
+    "cp -rv ${MNFV_PKG_OVERLAY_DIRECTORY}/* ${MNFV_INITFS_DIRECTORY}/",
+    "mkdir -p ${MNFV_INITFS_DIRECTORY}/dev 2>/dev/null || true",
+    "mknod -m 600 ${MNFV_INITFS_DIRECTORY}/dev/console c 5 1 2>/dev/null || true",
+    "mknod -m 666 ${MNFV_INITFS_DIRECTORY}/dev/null c 1 3 2>/dev/null || true",
+    "mknod -m 666 ${MNFV_INITFS_DIRECTORY}/dev/zero c 1 5 2>/dev/null || true",
+    "chmod +x ${MNFV_INITFS_DIRECTORY}/init 2>/dev/null || true",
+    "chmod +x ${MNFV_INITFS_DIRECTORY}/etc/init.d/rcS 2>/dev/null || true",
+    "cp ${MNFV_PROJECT_DIRECTORY}/scripts/lib/generated/config.sh ${MNFV_INITFS_DIRECTORY}/etc/config.sh"
+  ]
+}

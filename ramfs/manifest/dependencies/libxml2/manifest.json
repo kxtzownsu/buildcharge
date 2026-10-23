@@ -1,0 +1,31 @@
+{
+  "name": "libxml2",
+  "id": "libxml2",
+  "type": "dependency",
+  "author": "gnome",
+  "description": "XML parser and toolkit",
+  "dependencies": [],
+  "repo": {
+    "url": "https://gitlab.gnome.org/GNOME/libxml2.git",
+    "branch": "v2.12.7"
+  },
+  "directory": "libxml2",
+  "build_script": [
+    "cmake -B build -S . \\",
+    "  -DBUILD_SHARED_LIBS=off \\",
+    "  -DLIBXML2_WITH_CATALOG=off \\",
+    "  -DLIBXML2_WITH_TESTS=off \\",
+    "  -DLIBXML2_WITH_PROGRAMS=off \\",
+    "  -DLIBXML2_WITH_PYTHON=off \\",
+    "  -DLIBXML2_WITH_LZMA=off \\",
+    "  -DLIBXML2_WITH_ICONV=off \\",
+    "  -DCMAKE_C_COMPILER=${MNFV_CROSS_COMPILATION_ABS_CC} \\",
+    "  -DCMAKE_AR=${MNFV_CROSS_COMPILATION_ABS_AR} \\",
+    "  -DCMAKE_RANLIB=${MNFV_CROSS_COMPILATION_ABS_RANLIB} \\",
+    "  -DCMAKE_INSTALL_PREFIX=${MNFV_INSTALL_PREFIX}",
+    "cmake --build build"
+  ],
+  "install_script": [
+    "cmake --install build"
+  ]
+}

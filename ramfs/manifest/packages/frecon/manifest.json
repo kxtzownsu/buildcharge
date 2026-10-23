@@ -1,0 +1,40 @@
+{
+  "name": "frecon",
+  "id": "frecon",
+  "type": "package",
+  "author": "Google LLC",
+  "description": "Console for devices using KMS (kernel mode setting) only; replaces the kernel's Virtual Terminal (VT) console",
+  "dependencies": [
+    "libpng",
+    "zlib",
+    "libtsm",
+    "libdrm"
+  ],
+  "repo": {
+    "url": "https://chromium.googlesource.com/chromiumos/platform/frecon.git",
+    "branch": "release-R123-15786.B"
+  },
+  "directory": "frecon",
+  "//": "should we apply patches?",
+  "patches": true,
+  "config_options": {
+    "SHELL": {
+      "dependencies": [
+        "busybox"
+      ],
+      "description": "Whether or not to launch a shell once frecon is initialized in busybox"
+    }
+  },
+  "build_script": [
+    "make clean",
+    "make TARGET=frecon-lite ARCH=${MNFV_TARGET_ARCHITECTURE} OUT=build FRECON_LITE=1 NOSTRIP=0 all \\",
+    "  CROSS_COMPILE=${MNFV_CROSS_COMPILATION_DASH} \\",
+    "  CFLAGS=\"-fno-PIE -fno-PIC -Wall -Wsign-compare -Wpointer-arith -Wcast-qual -Wcast-align -I${MNFV_INSTALL_PREFIX}/include -I.\" \\",
+    "  LDLIBS=\"-no-pie -lpng -lz -ltsm -ldrm -lm -static -L${MNFV_INSTALL_PREFIX}/lib -I${MNFV_INSTALL_PREFIX}/include -I.\""
+  ],
+  "install_script": [
+    "mkdir -p ${MNFV_INITFS_DIRECTORY}/bin",
+    "cp build/frecon-lite ${MNFV_INITFS_DIRECTORY}/bin/frecon",
+    "cp -rv ${MNFV_PKG_OVERLAY_DIRECTORY}/* ${MNFV_INITFS_DIRECTORY}/"
+  ]
+}

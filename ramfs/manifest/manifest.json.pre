@@ -6,9 +6,11 @@ THROUGH THERE FIRST! !!
 
 /*
 NOTES:
+- the only things allowed in here are comments and #include lines.
 - MANIFEST_DIR is just the directory which has the manifest.json.pre file (aka this file)
-- This file still can use MANIFEST_VARs if needed, although they could be broken since
-  this isn't in a package.
+- This file still can use MANIFEST_VARs if needed, although most of them don't exist yet
+  since this isn't in a package. See README.md for the ones that do, using any other
+  variable is an error.
 */
 
 #include "${MANIFEST_DIR}/dependencies/common.json";

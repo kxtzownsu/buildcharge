@@ -86,22 +86,47 @@ config PACKAGES
 if PACKAGES
 EOF
 
+    # Collect package ids (type == "package") so we only emit kconfig
+    # symbols and "depends on" for real packages, not dependencies.
+    local package_id_list=""
+    local entries_tmp
+    entries_tmp="$(mktemp)"
+    jq -c '.[]' "$manifest" > "${entries_tmp}"
+
     while IFS= read -r entry; do
-      local name author description repo_url repo_branch deps sym
+      local t id
+      t="$(jq -r '.type' <<<"$entry")"
+      id="$(jq -r '.id' <<<"$entry")"
+      [[ "$t" == "package" ]] && package_id_list="${package_id_list} ${id}"
+    done < "${entries_tmp}"
+
+    while IFS= read -r entry; do
+      local id name author description repo_url repo_branch deps sym typ
+      id="$(jq -r '.id'                   <<<"$entry")"
+      typ="$(jq -r '.type'                <<<"$entry")"
+      # Dependencies are not toggleable in menuconfig
+      [[ "$typ" != "package" ]] && continue
+
       name="$(jq -r '.name'               <<<"$entry")"
       author="$(jq -r '.author'           <<<"$entry")"
       description="$(jq -r '.description' <<<"$entry")"
-      repo_url="$(jq -r '.repo_url'       <<<"$entry")"
-      repo_branch="$(jq -r '.repo_branch' <<<"$entry")"
+      repo_url="$(jq -r '.repo.url'       <<<"$entry")"
+      repo_branch="$(jq -r '.repo.branch' <<<"$entry")"
       deps="$(jq -r '.dependencies[]?'    <<<"$entry")"
 
-      sym="${name^^}"; sym="${sym//-/_}"
+      sym="${id^^}"; sym="${sym//-/_}"
 
       echo "config PACKAGE_${sym}"
       echo "  bool \"${name}\""
       echo "  default y"
 
+      # Only emit "depends on" for other packages (deps have no CONFIG symbol)
       [[ -n "$deps" ]] && while IFS= read -r dep; do
+        [[ -z "$dep" ]] && continue
+        case " ${package_id_list} " in
+          *" ${dep} "*) ;;
+          *) continue ;;
+        esac
         echo "  depends on PACKAGE_$(echo "$dep" | tr '[:lower:]-' '[:upper:]_')"
       done <<<"$deps"
 
@@ -142,6 +167,11 @@ EOF
           if [[ -n "$opt_deps" ]]; then
             while IFS= read -r dep; do
               [[ -z "$dep" ]] && continue
+              # config_options dependencies that are packages get a depends on
+              case " ${package_id_list} " in
+                *" ${dep} "*) ;;
+                *) continue ;;
+              esac
               dep_sym="$(echo "$dep" | tr '[:lower:]-' '[:upper:]_')"
               echo "  depends on PACKAGE_${dep_sym}"
             done <<<"$opt_deps"
@@ -157,7 +187,8 @@ EOF
 
         echo "endif"
       fi
-    done < <(jq -c '.[]' "$manifest")
+    done < "${entries_tmp}"
+    rm -f "${entries_tmp}"
 
     echo "endif"
     echo "endmenu"

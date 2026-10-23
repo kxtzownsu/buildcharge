@@ -1,0 +1,24 @@
+{
+  "name": "libpciaccess",
+  "id": "libpciaccess",
+  "type": "dependency",
+  "author": "xorg",
+  "description": "Generic PCI access library",
+  "dependencies": [],
+  "repo": {
+    "url": "https://gitlab.freedesktop.org/xorg/lib/libpciaccess.git",
+    "branch": "libpciaccess-0.18.1"
+  },
+  "directory": "libpciaccess",
+  "build_script": [
+    "apk add --no-cache meson ninja",
+    "meson setup build \\",
+    "  --default-library=static \\",
+    "  --cross-file=${MNFV_CROSS_COMPILATION_CROSS_FILE} \\",
+    "  --prefix=${MNFV_INSTALL_PREFIX}",
+    "meson compile -C build"
+  ],
+  "install_script": [
+    "meson install -C build"
+  ]
+}

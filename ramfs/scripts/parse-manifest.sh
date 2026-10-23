@@ -1,156 +1,188 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}"/lib/common.sh
+[[ "${VERBOSE}" == 1 ]] && set -x
 
+# usage: parse-manifest.sh <manifest.json> <toolchain-> <target arch> <package dir>
 MANIFEST_JSON="$1"
 CROSS_COMPILER_TOOLCHAIN="$2"
 TARGET_ARCH="$3"
+PACKAGE_DIR="$4"
+OUT_FILE="/tmp/manifest.json"
 
 require_arg "$MANIFEST_JSON" "manifest json"
 require_arg "$CROSS_COMPILER_TOOLCHAIN" "cross compiler toolchain"
 require_arg "$TARGET_ARCH" "target arch"
+require_arg "$PACKAGE_DIR" "package directory"
 
-MANIFEST_JSON="$(realpath "$MANIFEST_JSON")"
-MANIFEST_DIRECTORY="${4:-$(dirname "$MANIFEST_JSON")}"
+PACKAGE_DIR="/${PACKAGE_DIR#/}"
+PACKAGE_DIR="${PACKAGE_DIR%/}"
 
 command -v jq >/dev/null 2>&1 || error 1 "jq is required"
+command -v envsubst >/dev/null 2>&1 || error 1 "envsubst is required"
 [[ ! -f "$MANIFEST_JSON" ]] && error 1 "manifest not found: $MANIFEST_JSON"
-
-MANIFEST_VAR_HOST_ARCHITECTURE="$(uname -m)"
-MANIFEST_VAR_CROSS_COMPILATION="${CROSS_COMPILER_TOOLCHAIN%-}"
-MANIFEST_VAR_CROSS_COMPILATION_DASH="${MANIFEST_VAR_CROSS_COMPILATION}-"
-MANIFEST_VAR_TARGET_ARCHITECTURE="$TARGET_ARCH"
-MANIFEST_VAR_MANIFEST_DIRECTORY="$MANIFEST_DIRECTORY"
-MANIFEST_VAR_PROJECT_DIRECTORY="${project_dir}"
 
 case "$TARGET_ARCH" in
   x86_64|aarch64) ;;
   *) error 1 "unsupported arch: $TARGET_ARCH" ;;
 esac
 
-if [[ "${MANIFEST_VAR_HOST_ARCHITECTURE}" == "${MANIFEST_VAR_TARGET_ARCHITECTURE}" ]]; then
-  MANIFEST_VAR_CROSS_COMPILATION_DASH=""
-  MANIFEST_VAR_INSTALL_PREFIX="/usr"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_CC="/usr/bin/gcc"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_CXX="/usr/bin/g++"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_AR="/usr/bin/ar"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB="/usr/bin/ranlib"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJCOPY="/usr/bin/objcopy"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJDUMP="/usr/bin/objdump"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_STRIP="/usr/bin/strip"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_PKGCONFIG="/usr/bin/pkg-config"
-  MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE=""
-else
-  MANIFEST_VAR_INSTALL_PREFIX="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/usr"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_CC="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}gcc"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_CXX="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}g++"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_AR="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}ar"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}ranlib"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJCOPY="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}objcopy"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJDUMP="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}objdump"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_STRIP="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}strip"
-  MANIFEST_VAR_CROSS_COMPILATION_ABS_PKGCONFIG="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/bin/${MANIFEST_VAR_CROSS_COMPILATION_DASH}pkg-config"
-  MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE="/opt/cross/${MANIFEST_VAR_CROSS_COMPILATION}/${MANIFEST_VAR_CROSS_COMPILATION}-file"
-fi
+init_global_vars() {
+  local host_arch cores bindir tool_prefix root
 
-init_manifest_vars() {
-  local entry="$1"
-  MANIFEST_VAR_PACKAGE_NAME="$(jq -r .name <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_NAME_LOWER="$(echo "$MANIFEST_VAR_PACKAGE_NAME" | tr 'A-Z' 'a-z')"
-  MANIFEST_VAR_PACKAGE_NAME_UPPER="$(echo "$MANIFEST_VAR_PACKAGE_NAME" | tr 'a-z' 'A-Z')"
-  MANIFEST_VAR_PACKAGE_PACKAGE_NAME="$(jq -r .package_name <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_AUTHOR="$(jq -r .author <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_DESCRIPTION="$(jq -r .description <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_REPO_URL="$(jq -r .repo_url <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_REPO_BRANCH="$(jq -r .repo_branch <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_DIRECTORY="$(jq -r .directory <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY="$(jq -r .patch_directory <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_CONFIG_FILE="$(jq -r '.config_file // false' <<<"$entry")"
-  MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY="$(jq -r .overlay_directory <<<"$entry")"
-  MANIFEST_VAR_INITFS_DIRECTORY="/initfs/${project_name}/${MANIFEST_VAR_TARGET_ARCHITECTURE}"
+  host_arch="$(uname -m)"
+  cores="$(nproc)"
+  [[ "${USE_ALL_CORES}" == 1 ]] || cores=$((cores / 2))
+  [[ "$cores" -ge 1 ]] || cores=1
+
+  export MNFV_HOST_ARCHITECTURE="$host_arch"
+  export MNFV_TARGET_ARCHITECTURE="$TARGET_ARCH"
+  export MNFV_HOST_CORES="$cores"
+  export MNFV_CROSS_COMPILATION="${CROSS_COMPILER_TOOLCHAIN%-}"
+  export MNFV_CROSS_COMPILATION_DASH="${MNFV_CROSS_COMPILATION}-"
+  export MNFV_MANIFEST_DIRECTORY="${project_dir}/ramfs/manifest"
+  export MNFV_PROJECT_DIRECTORY="${project_dir}"
+  export MNFV_INITFS_DIRECTORY="/initfs/${project_name}/${TARGET_ARCH}"
+
+  root="/opt/cross/${MNFV_CROSS_COMPILATION}"
+  if [[ "$host_arch" == "$TARGET_ARCH" ]]; then
+    MNFV_CROSS_COMPILATION_DASH=""
+    bindir="/usr/bin"
+    tool_prefix=""
+    export MNFV_INSTALL_PREFIX="/usr"
+    export MNFV_CROSS_COMPILATION_CROSS_FILE=""
+  else
+    bindir="${root}/bin"
+    tool_prefix="${MNFV_CROSS_COMPILATION_DASH}"
+    export MNFV_INSTALL_PREFIX="${root}/usr"
+    export MNFV_CROSS_COMPILATION_CROSS_FILE="${root}/${MNFV_CROSS_COMPILATION}-file"
+  fi
+
+  export MNFV_CROSS_COMPILATION_ABS_CC="${bindir}/${tool_prefix}gcc"
+  export MNFV_CROSS_COMPILATION_ABS_CXX="${bindir}/${tool_prefix}g++"
+  export MNFV_CROSS_COMPILATION_ABS_AR="${bindir}/${tool_prefix}ar"
+  export MNFV_CROSS_COMPILATION_ABS_RANLIB="${bindir}/${tool_prefix}ranlib"
+  export MNFV_CROSS_COMPILATION_ABS_OBJCOPY="${bindir}/${tool_prefix}objcopy"
+  export MNFV_CROSS_COMPILATION_ABS_OBJDUMP="${bindir}/${tool_prefix}objdump"
+  export MNFV_CROSS_COMPILATION_ABS_STRIP="${bindir}/${tool_prefix}strip"
+  export MNFV_CROSS_COMPILATION_ABS_PKGCONFIG="${bindir}/${tool_prefix}pkg-config"
 }
 
-expand_manifest_vars() {
-  local s="$1"
-  
-  # export so envsubst sees them...
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_PKGCONFIG
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJCOPY
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_OBJDUMP
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_RANLIB
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_STRIP
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_CXX
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_AR
-  export MANIFEST_VAR_CROSS_COMPILATION_ABS_CC
-  export MANIFEST_VAR_CROSS_COMPILATION_CROSS_FILE
-  export MANIFEST_VAR_CROSS_COMPILATION_DASH
-  export MANIFEST_VAR_CROSS_COMPILATION
-  export MANIFEST_VAR_TARGET_ARCHITECTURE
-  export MANIFEST_VAR_HOST_ARCHITECTURE
-  export MANIFEST_VAR_INSTALL_PREFIX
-  export MANIFEST_VAR_MANIFEST_DIRECTORY
-  export MANIFEST_VAR_PROJECT_DIRECTORY
-  export MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY
-  export MANIFEST_VAR_PACKAGE_CONFIG_FILE
-  export MANIFEST_VAR_PACKAGE_REPO_BRANCH
-  export MANIFEST_VAR_PACKAGE_REPO_URL
-  export MANIFEST_VAR_PACKAGE_DESCRIPTION
-  export MANIFEST_VAR_PACKAGE_DIRECTORY
-  export MANIFEST_VAR_PACKAGE_PACKAGE_NAME
-  export MANIFEST_VAR_PACKAGE_NAME_LOWER
-  export MANIFEST_VAR_PACKAGE_NAME_UPPER
-  export MANIFEST_VAR_PACKAGE_NAME
-  export MANIFEST_VAR_PACKAGE_AUTHOR
-  export MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY
-  export MANIFEST_VAR_INITFS_DIRECTORY
-  
-  printf '%s' "$s" | envsubst
+# envsubst only touches what's listed here, so shell variables that
+# belong to the build scripts themselves (${CC}, ${HOME}, ...) stay as they are.
+shell_format() {
+  compgen -v MNFV_ | sed 's/.*/${&}/' | tr '\n' ' '
+}
+
+check_unresolved() {
+  local bad
+  bad="$(grep -oE '\$\{?MNFV_[A-Za-z0-9_]*\}?' <<<"$1" | sort -u | tr '\n' ' ')"
+  [[ -z "$bad" ]] || error 1 "$2: unknown manifest variable(s): ${bad}"
+}
+
+# package variables must not leak from one entry into the next
+clear_package_vars() {
+  local v
+  for v in $(compgen -v MNFV_PKG_) $(compgen -v MNFV_ENV_); do
+    unset "$v"
+  done
+}
+
+init_package_vars() {
+  local entry="$1" id id_upper name directory patches_bool
+
+  clear_package_vars
+
+  id="$(jq -r '.id' <<<"$entry")"
+  id_upper="${id^^}"
+  id_upper="${id_upper//-/_}"
+  name="$(jq -r '.name' <<<"$entry")"
+  directory="$(jq -r '.directory' <<<"$entry")"
+  patches_bool="$(jq -r '.patches' <<<"$entry")"
+
+  export MNFV_PKG_ID="$id"
+  export MNFV_PKG_ID_UPPER="$id_upper"
+  export MNFV_PKG_NAME="$name"
+  export MNFV_PKG_NAME_LOWER="${name,,}"
+  export MNFV_PKG_NAME_UPPER="${name^^}"
+  export MNFV_PKG_TYPE="$(jq -r '.type' <<<"$entry")"
+  export MNFV_PKG_AUTHOR="$(jq -r '.author' <<<"$entry")"
+  export MNFV_PKG_DESCRIPTION="$(jq -r '.description' <<<"$entry")"
+  export MNFV_PKG_REPO_URL="$(jq -r '.repo.url' <<<"$entry")"
+  export MNFV_PKG_REPO_BRANCH="$(jq -r '.repo.branch' <<<"$entry")"
+  export MNFV_PKG_DIRECTORY="${PACKAGE_DIR}/${directory}"
+  export MNFV_PKG_CONFIG_FILE_SCHEME="$(jq -r '.config_file_scheme' <<<"$entry")"
+  export MNFV_PKG_OVERLAY_DIRECTORY="${project_dir}/ramfs/overlays/${id_upper}"
+
+  if [[ "${patches_bool}" == "true" ]]; then
+    export MNFV_PKG_PATCH_DIRECTORY="${project_dir}/patches/ramfs/${id}"
+  else
+    export MNFV_PKG_PATCH_DIRECTORY=""
+  fi
 }
 
 strip_empty_cross_file() {
-  local s="$1"
-  s="$(echo "$s" | sed 's/ *--cross-file= *\\$//g')"
-  s="$(echo "$s" | sed 's/ *--cross-file= *//g')"
-  printf '%s' "$s"
+  sed -e '/^ *--cross-file= *\\$/d' \
+      -e 's/ *--cross-file= *\\$/ \\/' \
+      -e 's/ *--cross-file=$//'
+}
+
+# expands every env value, in order, so a later one can use an earlier one.
+# result (a json object) is left in REPLY
+expand_env() {
+  local entry="$1" key value
+  REPLY="{}"
+
+  for key in $(jq -r '.env | keys_unsorted[]' <<<"$entry"); do
+    value="$(jq -r --arg k "$key" '.env[$k]' <<<"$entry" | envsubst "$(shell_format)")"
+    check_unresolved "$value" "${MNFV_PKG_ID}: env.${key}"
+    export "MNFV_ENV_${key}=${value}"
+    REPLY="$(jq --arg k "$key" --arg v "$value" '. + {($k): $v}' <<<"$REPLY")"
+  done
+}
+
+# $1 = entry, $2 = build_script | install_script. result (a json array) is left in REPLY
+expand_script() {
+  local entry="$1" key="$2" text
+
+  if [[ "$(jq ".${key} | length" <<<"$entry")" -eq 0 ]]; then
+    REPLY="[]"
+    return
+  fi
+
+  text="$(jq -r ".${key}[]" <<<"$entry" | envsubst "$(shell_format)" | strip_empty_cross_file)"
+  check_unresolved "$text" "${MNFV_PKG_ID}: ${key}"
+  REPLY="$(jq -R . <<<"$text" | jq -s .)"
 }
 
 main() {
-  local output_entries=()
+  local entry env_json build_json install_json
+  local -a output_entries=()
+
+  init_global_vars
 
   while IFS= read -r entry; do
-    init_manifest_vars "$entry"
+    init_package_vars "$entry"
 
-    local expanded_patch_dir expanded_overlay_dir expanded_build_cmd_json expanded_entry
-    expanded_patch_dir="$(expand_manifest_vars "$MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY")"
-    expanded_overlay_dir="$(expand_manifest_vars "$MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY")"
+    expand_env "$entry"
+    env_json="$REPLY"
+    expand_script "$entry" build_script
+    build_json="$REPLY"
+    expand_script "$entry" install_script
+    install_json="$REPLY"
 
-    # lol bugfixes...
-    MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY="$expanded_overlay_dir" && export MANIFEST_VAR_PACKAGE_OVERLAY_DIRECTORY
-    MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY="$expanded_patch_dir" && export MANIFEST_VAR_PACKAGE_PATCH_DIRECTORY
-
-    expanded_build_cmd_json="$(
-      while IFS= read -r line; do 
-        expand_manifest_vars "$line"
-        echo
-      done < <(jq -r 'if (.build_cmd | type) == "array" then .build_cmd[] else .build_cmd end' <<<"$entry") |
-      sed '/^ *--cross-file= *\\$/d' |
-      sed 's/ *--cross-file= *\\$/ \\/' |
-      sed 's/ *--cross-file=$//' |
-      jq -R . | jq -s .
-    )"
-    expanded_entry="$(jq \
-      --arg patch_dir "$expanded_patch_dir" \
-      --arg overlay_dir "$expanded_overlay_dir" \
-      --argjson build_cmd "$expanded_build_cmd_json" \
-      '.patch_directory = $patch_dir | .overlay_directory = $overlay_dir | .build_cmd = $build_cmd' \
-      <<<"$entry")"
-
-    output_entries+=("$expanded_entry")
+    output_entries+=("$(jq -c \
+      --arg patch_dir "$MNFV_PKG_PATCH_DIRECTORY" \
+      --arg overlay_dir "$MNFV_PKG_OVERLAY_DIRECTORY" \
+      --argjson env "$env_json" \
+      --argjson build "$build_json" \
+      --argjson install "$install_json" \
+      '.overlay_directory = $overlay_dir | .env = $env | .build_script = $build | .install_script = $install' \
+      <<<"$entry")")
   done < <(jq -c '.[]' "$MANIFEST_JSON")
 
-  local out="/tmp/manifest.json"
-  printf '%s\n' "${output_entries[@]}" | jq -s '.' > "$out"
-  log "GEN" "$out"
+  printf '%s\n' "${output_entries[@]}" | jq -s '.' > "$OUT_FILE"
+  log "GEN" "$OUT_FILE"
 }
 
 main "$@"

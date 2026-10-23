@@ -24,4 +24,4 @@ INITFS_CPIOZ := $(INITFS_CPIO).xz
 KPART := $(WORK_DIR)/$(project_name).$(TARGET).kpart
 IMG := $(WORK_DIR)/$(project_name).$(TARGET).bin
 BZIMAGE := $(WORK_DIR)/kernel/$(project_name).$(TARGET).bzImage
-MANIFEST_JSON := $(WORK_DIR)/ramfs/manifest/manifest.json
+MANIFEST_JSON := $(PROJECT_DIR)/ramfs/manifest/manifest.json

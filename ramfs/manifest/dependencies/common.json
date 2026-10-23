@@ -1,0 +1,12 @@
+{
+  "//": "${MNFV_CWD} is the directory of which this file is stored",
+  "//": "order matters here, a dependency has to be listed before anything that depends on it",
+  "_include": [
+    "${MNFV_CWD}/zlib/manifest.json",
+    "${MNFV_CWD}/libpng/manifest.json",
+    "${MNFV_CWD}/libpciaccess/manifest.json",
+    "${MNFV_CWD}/libxml2/manifest.json",
+    "${MNFV_CWD}/libdrm/manifest.json",
+    "${MNFV_CWD}/libtsm/manifest.json"
+  ]
+}

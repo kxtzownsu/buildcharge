@@ -10,7 +10,12 @@ KCONFIG_FLAGS  := --kconfig $(KCONFIG_FILE) \
 									--config-mk $(CONFIG_MK) \
                   --manifest $(MANIFEST_JSON)
 
-.PHONY: menuconfig guiconfig gen-kconfig gen-config olddefconfig config
+.PHONY: menuconfig guiconfig gen-manifest gen-kconfig gen-config olddefconfig config
+
+MANIFEST_PRE := $(PROJECT_DIR)/ramfs/manifest/manifest.json.pre
+
+gen-manifest:
+	$(Q)$(EXEC) $(PROJECT_DIR)/ramfs/scripts/preprocess-manifest.sh $(MANIFEST_PRE) $(MANIFEST_JSON) $(TARGET)
 
 menuconfig: config gen-kconfig
 	$(Q)$(KCONFIG_SCRIPT) menuconfig $(KCONFIG_FLAGS)
@@ -18,7 +23,7 @@ menuconfig: config gen-kconfig
 guiconfig: config gen-kconfig
 	$(Q)$(KCONFIG_SCRIPT) guiconfig $(KCONFIG_FLAGS)
 
-config:
+config: gen-manifest
 ifneq ($(PROJECT),)
 	$(Q)$(COPY) $(PROJECT_DIR)/configs/projects/$(PROJECT)/default.$(TARGET) $(DOT_CONFIG)
 else ifeq ($(USE_DEFAULT_CONFIG),1)
