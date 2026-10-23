@@ -134,7 +134,7 @@ build_package() {
   cd "${pkgdir}" || return 1
 
   if [ "${patches_bool}" == "true" ]; then
-    apply_patches "${name}" "${id_upper}" "${pkgdir}" "${PROJECT_DIR}/patches/ramfs/${id}" || return 1
+    apply_patches "${name}" "${id_upper}" "${pkgdir}" "${PROJECT_DIR}/patches/ramfs/${id_upper}" || return 1
   fi
 
   cfg_file="$(config_file_for "${id_upper}" "${config_scheme}")"

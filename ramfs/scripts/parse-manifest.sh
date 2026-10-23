@@ -115,7 +115,7 @@ init_package_vars() {
   export MNFV_PKG_OVERLAY_DIRECTORY="${project_dir}/ramfs/overlays/${id_upper}"
 
   if [[ "${patches_bool}" == "true" ]]; then
-    export MNFV_PKG_PATCH_DIRECTORY="${project_dir}/patches/ramfs/${id}"
+    export MNFV_PKG_PATCH_DIRECTORY="${project_dir}/patches/ramfs/${id_upper}"
   else
     export MNFV_PKG_PATCH_DIRECTORY=""
   fi
