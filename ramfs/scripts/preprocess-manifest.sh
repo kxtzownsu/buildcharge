@@ -153,6 +153,9 @@ def known: ["name", "id", "type", "author", "description", "dependencies", "repo
         (($e.repo | if type == "object" then .branch else null end) as $b
           | select($b != null and ($b | type) != "string")
           | "ERROR \($who): repo.branch must be a string"),
+        (($e.repo | if type == "object" then .commit else null end) as $b
+          | select($b != null and ($b | type) != "string")
+          | "ERROR \($who): repo.commit must be a string"),
         (["author", "description", "directory"][] as $k
           | select($e[$k] != null and ($e[$k] | type) != "string")
           | "ERROR \($who): \"\($k)\" must be a string"),
@@ -209,7 +212,7 @@ map({
   author: (.author // ""),
   description: (.description // ""),
   dependencies: (.dependencies // []),
-  repo: { url: .repo.url, branch: (.repo.branch // "") },
+  repo: { url: .repo.url, branch: (.repo.branch // ""), commit: (.repo.commit // "") },
   directory: (.directory // .id),
   patches: (.patches // false),
   config_file_scheme: (.config_file_scheme // 0),

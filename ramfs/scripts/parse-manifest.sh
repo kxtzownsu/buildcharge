@@ -110,6 +110,7 @@ init_package_vars() {
   export MNFV_PKG_DESCRIPTION="$(jq -r '.description' <<<"$entry")"
   export MNFV_PKG_REPO_URL="$(jq -r '.repo.url' <<<"$entry")"
   export MNFV_PKG_REPO_BRANCH="$(jq -r '.repo.branch' <<<"$entry")"
+  export MNFV_PKG_REPO_COMMIT="$(jq -r '.repo.commit' <<<"$entry")"
   export MNFV_PKG_DIRECTORY="${PACKAGE_DIR}/${directory}"
   export MNFV_PKG_CONFIG_FILE_SCHEME="$(jq -r '.config_file_scheme' <<<"$entry")"
   export MNFV_PKG_OVERLAY_DIRECTORY="${project_dir}/ramfs/overlays/${id_upper}"

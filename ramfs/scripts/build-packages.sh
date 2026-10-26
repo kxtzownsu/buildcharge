@@ -96,7 +96,7 @@ should_build() {
 
 build_package() {
   local entry="$1"
-  local id id_upper name repo_url repo_branch directory patches_bool config_scheme
+  local id id_upper name repo_url repo_branch repo_commit directory patches_bool config_scheme
   local build_script install_script pkgdir cfg_file ans
   local -a gitargs=()
 
@@ -106,6 +106,7 @@ build_package() {
   name="$(jq -r '.name' <<<"${entry}")"
   repo_url="$(jq -r '.repo.url' <<<"${entry}")"
   repo_branch="$(jq -r '.repo.branch' <<<"${entry}")"
+  repo_commit="$(jq -r '.repo.commit' <<<"${entry}")"
   directory="$(jq -r '.directory' <<<"${entry}")"
   patches_bool="$(jq -r '.patches' <<<"${entry}")"
   config_scheme="$(jq -r '.config_file_scheme' <<<"${entry}")"
@@ -129,6 +130,14 @@ build_package() {
       log "ERR" "failed to clone ${name}"
       return 1
     }
+    if [ -n "${repo_commit}" ]; then
+      log "GIT" "${name} @ ${repo_commit}"
+      git -C "${pkgdir}" reset --hard "${repo_commit}" || {
+        log "ERR" "failed to reset ${name} to ${repo_commit}"
+        rm -rf "${pkgdir}"
+        return 1
+      }
+    fi
   fi
 
   cd "${pkgdir}" || return 1
