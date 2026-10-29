@@ -1,13 +1,15 @@
 {
-  "name": "libxml2",
-  "id": "libxml2",
+  "name": "libvncserver",
+  "id": "libvncserver",
   "type": "dependency",
-  "author": "gnome",
-  "description": "XML parser and toolkit",
-  "dependencies": [],
+  "author": "libvnc",
+  "description": "LibVNCServer/LibVNCClient are cross-platform C libraries that allow you to easily implement VNC server or client functionality in your program.",
+  "dependencies": [
+    "zlib"
+  ],
   "repo": {
-    "url": "https://gitlab.gnome.org/GNOME/libxml2.git",
-    "branch": "v2.12.7"
+    "url": "https://github.com/libvnc/libvncserver.git",
+    "commit": "98aaee0560baa0332339b2ef464ea96ed9b9b28c"
   },
   "directory": "libxml2",
   "build_script": [

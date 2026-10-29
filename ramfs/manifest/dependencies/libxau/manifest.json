@@ -1,0 +1,27 @@
+{
+  "name": "libxau",
+  "id": "libxau",
+  "type": "dependency",
+  "author": "xorg",
+  "description": "A Sample Authorization Protocol for X",
+  "dependencies": [],
+  "repo": {
+    "url": "https://salsa.debian.org/xorg-team/lib/libxau",
+    "commit": "369da9cff5c819f804d9505ced22dd44e932d837"
+  },
+  "directory": "libxau",
+  "build_script": [
+    "apk add libtool xorgproto",
+    "autoreconf -fiv",
+    "CC=${MNFV_CROSS_COMPILATION_ABS_CC} \\",
+    "AR=${MNFV_CROSS_COMPILATION_ABS_AR} \\",
+    "RANLIB=${MNFV_CROSS_COMPILATION_ABS_AR} \\",
+    "CFLAGS='-static -I${MNFV_INSTALL_PREFIX}/include' \\",
+    "LDFLAGS='-static -L${MNFV_INSTALL_PREFIX}/lib' \\",
+    "./configure --prefix='${MNFV_INSTALL_PREFIX}'",
+    "make -j${MNFV_HOST_CORES}"
+  ],
+  "install_script": [
+    "make install"
+  ]
+}

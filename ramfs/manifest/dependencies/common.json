@@ -5,8 +5,9 @@
     "${MNFV_CWD}/zlib/manifest.json",
     "${MNFV_CWD}/libpng/manifest.json",
     "${MNFV_CWD}/libpciaccess/manifest.json",
-    "${MNFV_CWD}/libxml2/manifest.json",
     "${MNFV_CWD}/libdrm/manifest.json",
-    "${MNFV_CWD}/libtsm/manifest.json"
+    "${MNFV_CWD}/libtsm/manifest.json",
+    "${MNFV_CWD}/libvncserver/manifest.json",
+    "${MNFV_CWD}/libxau/manifest.json"
   ]
 }
