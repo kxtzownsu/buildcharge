@@ -9,7 +9,7 @@
   ],
   "repo": {
     "url": "https://github.com/glennrp/libpng.git",
-    "branch": "v1.5.15"
+    "branch": "v1.6.59"
   },
   "directory": "libpng",
   "build_script": [

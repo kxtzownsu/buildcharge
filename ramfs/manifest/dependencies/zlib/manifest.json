@@ -7,7 +7,7 @@
   "dependencies": [],
   "repo": {
     "url": "https://github.com/madler/zlib.git",
-    "branch": "v1.3.1"
+    "branch": "v1.3.2"
   },
   "directory": "zlib",
   "build_script": [

@@ -5,8 +5,7 @@
   "author": "mesa",
   "description": "libdrm Direct Rendering Manager library and headers",
   "dependencies": [
-    "libpciaccess",
-    "libxml2"
+    "libpciaccess"
   ],
   "repo": {
     "url": "https://gitlab.freedesktop.org/mesa/drm.git",
