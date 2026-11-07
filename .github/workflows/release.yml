@@ -12,14 +12,44 @@ jobs:
   # we do this because both `package` & `release` use these vars, so it needs to be global.
   setup:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       projects: ${{ steps.set.outputs.projects }}
       arches: ${{ steps.set.outputs.arches }}
+      run_id: ${{ steps.find_run.outputs.run_id }}
     steps:
       - id: set
         run: |
           echo 'projects=["buildcharge"]' >> "$GITHUB_OUTPUT"
           echo 'arches=["x86_64","aarch64"]' >> "$GITHUB_OUTPUT"
+
+      # the latest run may have been skipped (WORKFLOW=none / .disableworkflow),
+      # which still concludes as success, so walk back until a run that actually built.
+      - id: find_run
+        name: Find latest run that produced artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=""
+          for id in $(gh api --paginate \
+              "repos/${{ github.repository }}/actions/workflows/build.yml/runs?branch=main&status=success&per_page=100" \
+              --jq '.workflow_runs[].id'); do
+            conclusion=$(gh api \
+              "repos/${{ github.repository }}/actions/runs/$id/jobs?per_page=100" \
+              --jq '.jobs[] | select(.name | startswith("build")) | .conclusion' | sort -u)
+            if [[ "$conclusion" == "success" ]]; then
+              RUN_ID="$id"
+              break
+            fi
+          done
+          if [[ -z "$RUN_ID" ]]; then
+            echo "no build run with a successful build job found" >&2
+            exit 1
+          fi
+          echo "using build run $RUN_ID"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
   package:
     needs: setup
@@ -32,11 +62,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download ${{ matrix.project }}-${{ matrix.arch }}
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@a92c7ae74cf1df8810783758581e485ac3aaa309
         with:
-          workflow: build.yml
-          branch: main
-          workflow_conclusion: success
+          run_id: ${{ needs.setup.outputs.run_id }}
           name: ${{ matrix.project }}-${{ matrix.arch }}
           path: dist/${{ matrix.arch }}
 
