@@ -11,7 +11,7 @@
     "url": "https://github.com/libvnc/libvncserver.git",
     "commit": "98aaee0560baa0332339b2ef464ea96ed9b9b28c"
   },
-  "directory": "libxml2",
+  "directory": "libvncserver",
   "build_script": [
     "cmake -B build -S . \\",
     "  -DBUILD_SHARED_LIBS=off \\",
