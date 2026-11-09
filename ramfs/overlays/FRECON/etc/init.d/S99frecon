@@ -22,14 +22,39 @@ commandDispatcher(){
   esac
 }
 
+dumpState(){
+  echo "--- frecon log (${LOG})"
+  cat "$LOG" 2>/dev/null
+  echo "--- /dev/dri"
+  ls -l /dev/dri 2>&1
+  echo "--- /sys/class/drm"
+  ls /sys/class/drm 2>&1
+}
+
+startLog(){
+  mkdir -p /run /var/log
+  touch "$LOG" 2>/dev/null && return 0
+  LOG="/tmp/frecon.log"
+  touch "$LOG"
+}
+
 # dont loop, `--daemon` will make it run in the background
 startFrecon(){
   [ ! -x "/bin/frecon" ] && echo "frecon binary not found or not executable" && exit 1
 
-  # if frecon is already running, but we didn't start it, kill it.
-  FRECON_PID_COUNT=$(pgrep -f "/bin/frecon" | wc -l)
-  [ ! -e /tmp/started-frecon ] && [ ${FRECON_PID_COUNT} -gt 0 ] && echo "frecon is already running, but we didn't start it. Killing it." && stopFrecon
+  startLog
 
+  # frecon could be running as 'frecon' or 'frecon-lite'
+  FRECON_PID_COUNT=$(pidof frecon frecon-lite 2>/dev/null | wc -w)
+  if [ ${FRECON_PID_COUNT} -gt 0 ] && [ ! -e /tmp/started-frecon ]; then
+    echo "killing ${FRECON_PID_COUNT} stale frecon process(es)"
+    stopFrecon
+    sleep 1
+  fi
+
+  [ -e /dev/dri/card0 ] || echo "warning: /dev/dri/card0 is missing"
+
+  echo "starting frecon"
   /bin/frecon \
     --daemon \
     --enable-osc \
@@ -38,6 +63,15 @@ startFrecon(){
     --no-login \
     --enable-vt1 \
     --pre-create-vts >> "$LOG" 2>&1
+  FRECON_STATUS=$?
+
+  if [ ${FRECON_STATUS} -ne 0 ]; then
+    echo "frecon exited with status ${FRECON_STATUS}"
+    dumpState
+    exit 1
+  fi
+
+  [ -e /run/frecon/vt0 ] || echo "waiting for /run/frecon/vt0..."
 
   COUNT=0
   # if vt0 doesn't appear within 60 seconds, something is wrong
@@ -48,10 +82,12 @@ startFrecon(){
 
   if [ -e /run/frecon/vt0 ]; then
     touch /tmp/started-frecon
+    echo "frecon is running"
     printf '\033]input:on\a' > /run/frecon/vt0
     printf '\033[?25h' > /run/frecon/vt0
   else
     echo "frecon failed to start within 60 seconds"
+    dumpState
     exit 1
   fi
 
@@ -63,7 +99,7 @@ startFrecon(){
 
 # just kill the process i guess
 stopFrecon(){
-  pkill -f "/bin/frecon"
+  killall -9 frecon frecon-lite 2>/dev/null
   rm -rf /tmp/started-frecon
 }
 

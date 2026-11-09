@@ -30,6 +30,7 @@ $(INITFS_CPIO):
 	$(Q)$(CHOWN) -R root:root $(INITFS_DIR)
 	$(Q)$(CHMOD) -R +x $(INITFS_DIR)/bin/
 	$(Q)$(CHMOD) -R +x $(INITFS_DIR)/sbin/
+	$(Q)$(CHMOD) -R +x $(INITFS_DIR)/etc/init.d/
 	$(Q)cd $(INITFS_DIR) && find . -print | cpio -o -H newc -F $(INITFS_CPIO)
 
 $(INITFS_CPIOZ): $(INITFS_CPIO)
